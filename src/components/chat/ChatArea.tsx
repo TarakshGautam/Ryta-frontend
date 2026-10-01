@@ -1,7 +1,6 @@
 import React, {
     useCallback,
     useEffect,
-    useLayoutEffect,
     useRef,
     useState,
 } from "react";
@@ -59,63 +58,48 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const sendingRef = useRef(false);
-    const [atBottom, setAtBottom] = useState(true); 
+    const [atBottom, setAtBottom] = useState(true);
 
-    // ── Scroll helpers ──
+    // ─────────────────────────────────────────────────────────────
+    // Scroll helpers
+    // ─────────────────────────────────────────────────────────────
     const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
         const el = scrollRef.current;
         if (!el) return;
         el.scrollTo({ top: el.scrollHeight, behavior });
     }, []);
 
-    const handleScroll = () => {
+    // Double rAF — ensures layout + paint complete before we measure scrollHeight.
+    // This is what makes chat-switch scroll 100% reliable across short + long chats.
+    const scrollToBottomAfterPaint = useCallback(
+        (behavior: ScrollBehavior = "auto") => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    scrollToBottom(behavior);
+                });
+            });
+        },
+        [scrollToBottom]
+    );
+
+    const handleScroll = useCallback(() => {
         const el = scrollRef.current;
         if (!el) return;
         const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
         setAtBottom(distance < 120);
-    };
+    }, []);
 
-    // Jump to the newest message the moment one lands.
-    // ── Auto-scroll: instant on chat switch, smooth on new message ──
-    const prevChatIdRef = useRef<string | null>(null);
-    const prevMessageCountRef = useRef<number>(0);
-
-    useLayoutEffect(() => {
-        const el = scrollRef.current;
-        if (!el) return;
-
-        const chatChanged = prevChatIdRef.current !== activeChatId;
-        const newMessage =
-            messages.length > prevMessageCountRef.current && !chatChanged;
-
-        // Update refs
-        prevChatIdRef.current = activeChatId;
-        prevMessageCountRef.current = messages.length;
-
-        // Don't scroll while loading
-        if (messagesLoading) return;
-
-        if (chatChanged) {
-            // Instantly jump to bottom (chat switched)
-            el.scrollTop = el.scrollHeight;
-        } else if (newMessage) {
-            // Smooth scroll for new messages
-            el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-        }
-    }, [activeChatId, messages.length, messagesLoading]);
-
-    // Reset the scroll position when we land in a different thread.
-    useEffect(() => {
-        setAtBottom(true);
-    }, [activeChatId]);
-
-    // ── Load history ──
+    // ─────────────────────────────────────────────────────────────
+    // Load history — single source of truth for chat switching
+    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
         let cancelled = false;
 
         const load = async () => {
             if (!activeChatId || !userId) {
                 setMessages([]);
+                // New empty chat — pin to bottom
+                scrollToBottomAfterPaint("auto");
                 return;
             }
 
@@ -133,13 +117,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     persona: r.persona ?? persona,
                     mood: r.mood,
                     isSearchUsed: r.isSearchUsed,
-                    timestamp: r.createdAt ? new Date(r.createdAt) : new Date(),
+                    timestamp: r.createdAt
+                        ? new Date(r.createdAt)
+                        : new Date(),
                 }));
 
-                // Set messages FIRST (so UI shows immediately)
                 setMessages(loaded);
+                setAtBottom(true);
 
-                // THEN derive persona + theme from owner
+                // Scroll AFTER paint — guaranteed, regardless of chat length.
+                scrollToBottomAfterPaint("auto");
+
+                // Derive persona + theme from thread owner
                 const owner = loaded[0]?.persona;
                 if (owner && owner !== persona) {
                     useChatStore.getState().setPersona(owner);
@@ -150,13 +139,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                 console.error("Could not load conversation:", e);
                 setMessages([]);
                 setError(
-                    e instanceof Error ? e.message : "Could not load this conversation."
+                    e instanceof Error
+                        ? e.message
+                        : "Could not load this conversation."
                 );
             } finally {
-                if (!cancelled) {
-                    setMessagesLoading(false);
-                }
+                if (!cancelled) setMessagesLoading(false);
             }
+        };
 
         void load();
         return () => {
@@ -165,9 +155,39 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeChatId, userId]);
 
+    // ─────────────────────────────────────────────────────────────
+    // Smooth scroll when a NEW message is appended (not on load)
+    // ─────────────────────────────────────────────────────────────
+    const prevMessagesLengthRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (messagesLoading) return;
+
+        const prev = prevMessagesLengthRef.current;
+        const current = messages.length;
+        prevMessagesLengthRef.current = current;
+
+        // Only scroll if a new message was appended to an existing thread.
+        // `prev > 0` skips the 0 → N jump that happens on chat load.
+        if (current > prev && prev > 0) {
+            scrollToBottom("smooth");
+        }
+    }, [messages.length, messagesLoading, scrollToBottom]);
+
+    // ─────────────────────────────────────────────────────────────
+    // Smooth scroll when sending starts (so user sees their message)
+    // ─────────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (isSending) scrollToBottom("smooth");
+    }, [isSending, scrollToBottom]);
+
     // ── Send ──
     const deliver = useCallback(
-        async (text: string, useSearch: boolean, attachments: Attachment[] = []) => {
+        async (
+            text: string,
+            useSearch: boolean,
+            attachments: Attachment[] = []
+        ) => {
             if (sendingRef.current) return;
             sendingRef.current = true;
             setIsSending(true);
@@ -192,7 +212,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     attachments,
                 });
 
-                // The Worker names a new thread after the opening line.
                 if (!activeChatId) {
                     setActiveChatId(result.conversationId);
                     upsertConversation({
@@ -204,7 +223,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     onConversationCreated?.(result.conversationId);
                 }
 
-                // Use the real ids so a reload lines up.
                 updateMessage(optimisticId, { id: result.userMessageId });
 
                 appendMessage({
@@ -218,9 +236,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                 });
             } catch (e) {
                 console.error("Send failed:", e);
-                setMessages(
-                    messages.filter((m) => m.id !== optimisticId)
-                );
+                setMessages(messages.filter((m) => m.id !== optimisticId));
                 setError(
                     e instanceof Error
                         ? e.message
@@ -269,7 +285,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         [messages, setMessages, deliver, webSearchEnabled]
     );
 
-    // ── Feedback (local only — no endpoint yet) ──
+    // ── Feedback (local only) ──
     const handleFeedback = useCallback(
         (messageId: string, feedback: "liked" | "disliked" | null) => {
             setMessages(
@@ -352,9 +368,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
 };
 
 // ─────────────────────────────────────────────
-// Empty state — left aligned, editorial
+// Empty state
 // ─────────────────────────────────────────────
-
 const EmptyState: React.FC<{
     persona: "ryku" | "takshu";
     onPick: (text: string) => void;
@@ -392,7 +407,6 @@ const EmptyState: React.FC<{
 // ─────────────────────────────────────────────
 // Thinking indicator
 // ─────────────────────────────────────────────
-
 const Thinking: React.FC = () => (
     <div className="flex items-center gap-1.5" aria-label="Thinking">
         {[0, 150, 300].map((delay) => (
