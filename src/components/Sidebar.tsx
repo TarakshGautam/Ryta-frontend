@@ -71,7 +71,8 @@ const groupFor = (iso?: string): DateGroup => {
 const Sidebar: React.FC = () => {
     const { user } = useUser();
     const userId = user?.id;
-    const { setThemeName, resolvedAppearance, toggleTheme } = useTheme();
+    const { setThemeName, resolvedAppearance, toggleTheme, setAppearance } =
+        useTheme();
 
     const sidebarOpen = useChatStore((s) => s.sidebarOpen);
     const toggleSidebar = useChatStore((s) => s.toggleSidebar);
@@ -255,6 +256,9 @@ const Sidebar: React.FC = () => {
 
     const updateSettings = (patch: Partial<AppSettings>) => {
         setSettings((prev) => ({ ...prev, ...patch }));
+        if (patch.appearance) {
+            setAppearance(patch.appearance);
+        }
     };
 
     if (!sidebarOpen) return null;
@@ -349,8 +353,8 @@ const Sidebar: React.FC = () => {
                         onClick={handleNewChat}
                         title="New chat"
                         className={`flex h-9 items-center gap-2 rounded-lg text-[13px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface)] ${collapsed
-                                ? "w-9 mx-auto justify-center"
-                                : "w-full px-2.5"
+                            ? "w-9 mx-auto justify-center"
+                            : "w-full px-2.5"
                             }`}
                     >
                         <Plus className="w-4 h-4 text-[var(--ryta-text-muted)] shrink-0" />
@@ -373,8 +377,8 @@ const Sidebar: React.FC = () => {
                                 title={collapsed ? item.label : undefined}
                                 aria-current={active ? "page" : undefined}
                                 className={`flex items-center gap-2.5 rounded-lg text-[13px] transition-colors ${collapsed
-                                        ? "w-9 mx-auto justify-center py-2"
-                                        : "w-full px-2.5 py-2"
+                                    ? "w-9 mx-auto justify-center py-2"
+                                    : "w-full px-2.5 py-2"
                                     } ${active
                                         ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
                                         : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
@@ -488,8 +492,8 @@ const Sidebar: React.FC = () => {
                                     : "Switch to dark"
                             }
                             className={`p-2 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
-                                    ? "w-9 justify-center"
-                                    : "flex-1 justify-center"
+                                ? "w-9 justify-center"
+                                : "flex-1 justify-center"
                                 }`}
                         >
                             {isDark ? (
@@ -505,8 +509,8 @@ const Sidebar: React.FC = () => {
                             title="Settings"
                             aria-label="Settings"
                             className={`p-2 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
-                                    ? "w-9 justify-center"
-                                    : "flex-1 justify-center"
+                                ? "w-9 justify-center"
+                                : "flex-1 justify-center"
                                 }`}
                         >
                             <SettingsIcon className="w-4 h-4" />
@@ -549,7 +553,7 @@ const Sidebar: React.FC = () => {
                     onClose={() => setSettingsOpen(false)}
                 />
             )}
-{/*  */}
+
             {/* ── Confirm delete ── */}
             {deleting && (
                 <div
@@ -694,8 +698,8 @@ const ChatRow: React.FC<
                         onClick={() => onOpen(conversation)}
                         aria-current={isActive ? "true" : undefined}
                         className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[12.5px] transition-colors ${isActive
-                                ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
-                                : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
+                            ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
+                            : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
                             }`}
                     >
                         <span className="truncate">{conversation.title}</span>
@@ -705,8 +709,8 @@ const ChatRow: React.FC<
                 {!isRenaming && (
                     <div
                         className={`absolute right-1 top-1/2 -translate-y-1/2 transition-opacity ${isMenuOpen
-                                ? "opacity-100"
-                                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                             }`}
                     >
                         <button
@@ -779,8 +783,8 @@ const MenuItem: React.FC<{
         type="button"
         onClick={onClick}
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors ${danger
-                ? "text-[var(--ryta-primary)] hover:bg-[var(--ryta-surface)]"
-                : "text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
+            ? "text-[var(--ryta-primary)] hover:bg-[var(--ryta-surface)]"
+            : "text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
             }`}
     >
         {icon}
