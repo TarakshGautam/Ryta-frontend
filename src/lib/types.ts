@@ -1,101 +1,77 @@
-export type Appearance = 'system' | 'light' | 'dark';
-export type Density = 'compact' | 'comfortable' | 'spacious';
-export type ThemeIntensity = 'subtle' | 'balanced' | 'vivid';
-export type Animations = 'full' | 'reduced' | 'off';
-export type ResponseStyle = 'concise' | 'balanced' | 'detailed';
-export type PersonalityExpression = 'subtle' | 'natural' | 'expressive';
+// ─────────────────────────────────────────────────────────────
+// RyTa.AI — Core Types
+// Mirrors the live Cloudflare Worker contract.
+// Two personas, six themes, no sub-modes.
+// ─────────────────────────────────────────────────────────────
 
-export type Model = 'takshu' | 'ryku';
+// ─── Appearance ───
+export type Appearance = "system" | "light" | "dark";
+export type ResolvedAppearance = "light" | "dark";
 
-// Theme names — must match index.css [data-theme="..."] values
+// ─── Themes ───
+// Each persona owns a palette. The two names below are used
+// most often — `sweetheart` for Ryku, `protector` for Takshu —
+// but all six exist in index.css and can be picked manually.
 export type ThemeName =
-    | 'auraman' | 'mentor' | 'protector'
-    | 'sweetheart' | 'calm' | 'savage';
+    | "sweetheart"
+    | "protector"
+    | "auraman"
+    | "mentor"
+    | "calm"
+    | "savage";
 
-// Takshu and Ryku Specific Modes / Personas
-// FIXED: 'proptetor' -> 'protector' (must match backend)
-export type Mode =
-    | 'protector' | 'auraman' | 'mentor'
-    | 'sweetheart' | 'calm_listener' | 'savage_bestie';
+// ─── Persona ───
+export type Persona = "ryku" | "takshu";
 
-// Map persona mode -> theme name (auto-switch on persona change)
-export const MODE_TO_THEME: Record<Mode, ThemeName> = {
-    protector: 'protector',
-    auraman: 'auraman',
-    mentor: 'mentor',
-    sweetheart: 'sweetheart',
-    calm_listener: 'calm',
-    savage_bestie: 'savage',
+// ─── Persona → palette mapping ───
+// Switching souls retints the entire app. Kept here (not in
+// types/chat) so anything that imports from `lib/types` gets it.
+export const PERSONA_THEME: Record<Persona, ThemeName> = {
+    ryku: "sweetheart",
+    takshu: "protector",
 };
 
+// ─── UI Preferences ───
+// Everything below is a *real* setting the app reads and applies.
+// If a toggle isn't wired to behavior, it does not belong here.
 export interface AppSettings {
+    // Appearance
     appearance: Appearance;
     themeName: ThemeName;
-    density: Density;
-    themeIntensity: ThemeIntensity;
-    ambientEffects: boolean;
-    backgroundDepth: boolean;
-    glassSurfaces: boolean;
-    animations: Animations;
+
+    // Chat behaviour
     enterToSend: boolean;
     showTimestamps: boolean;
     showMessageActions: boolean;
     autoScroll: boolean;
     markdownRendering: boolean;
-    codeLineNumbers: boolean;
-    compactMessages: boolean;
     showAiStatus: boolean;
-    responseStyle: ResponseStyle;
-    personalityExpression: PersonalityExpression;
+
+    // Personalisation
     customInstructions: string;
     useConversationContext: boolean;
+
+    // Memory & privacy
     memory: boolean;
     temporaryChat: boolean;
     chatHistory: boolean;
 }
 
-export const MODEL_MODES: Record<Model, Mode[]> = {
-    takshu: ['protector', 'auraman', 'mentor'],
-    ryku: ['sweetheart', 'calm_listener', 'savage_bestie'],
-};
+export const DEFAULT_SETTINGS: AppSettings = {
+    appearance: "light",
+    themeName: "sweetheart",
 
-export const MODEL_INFO: Record<Model, { name: string; description: string }> = {
-    takshu: {
-        name: 'Takshu',
-        description: 'Protective, high-aura presence and dedicated guidance.',
-    },
-    ryku: {
-        name: 'Ryku',
-        description: 'Warm companion, mindful listener, and witty friend.',
-    },
-};
+    enterToSend: true,
+    showTimestamps: false,
+    showMessageActions: true,
+    autoScroll: true,
+    markdownRendering: true,
+    showAiStatus: true,
 
-export const MODE_INFO: Record<Mode, { name: string; description: string }> = {
-    // Takshu Personas
-    protector: {
-        name: 'Protector',
-        description: 'Guards your space, offers protective advice, and keeps things safe.',
-    },
-    auraman: {
-        name: 'Aura Man',
-        description: 'Unmatched confidence, strong vibes, and sharp clarity.',
-    },
-    mentor: {
-        name: 'Mentor',
-        description: 'Structured wisdom, growth-focused feedback, and strategic guidance.',
-    },
+    customInstructions: "",
+    useConversationContext: true,
 
-    // Ryku Personas
-    sweetheart: {
-        name: 'Sweetheart',
-        description: 'Affectionate, deeply caring, and comforting presence.',
-    },
-    calm_listener: {
-        name: 'Calm Listener',
-        description: 'Patient, zero-judgment space for venting and peaceful conversations.',
-    },
-    savage_bestie: {
-        name: 'Savage Bestie',
-        description: 'Unfiltered, hilarious, playful roast master and real talk partner.',
-    },
+    memory: true,
+    temporaryChat: false,
+    chatHistory: true,
 };

@@ -18,7 +18,7 @@ import {
     PinOff,
     Plus,
     Search,
-    Settings,
+    Settings as SettingsIcon,
     Sparkles,
     Sun,
     Trash2,
@@ -35,6 +35,8 @@ import {
 import { useChatStore } from "@/store/chatStore";
 import { useTheme } from "@/context/ThemeContext";
 import { PERSONA_THEME, type ConversationSummary } from "@/types/chat";
+import Settings from "./Settings";
+import { DEFAULT_SETTINGS, type AppSettings } from "@/lib/types";
 
 type DateGroup = "Today" | "Yesterday" | "Previous 7 days" | "Older";
 
@@ -99,6 +101,8 @@ const Sidebar: React.FC = () => {
     const [deleting, setDeleting] =
         useState<ConversationSummary | null>(null);
     const [busy, setBusy] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
     const menuRef = useRef<HTMLDivElement>(null);
     const renameRef = useRef<HTMLInputElement>(null);
@@ -249,6 +253,10 @@ const Sidebar: React.FC = () => {
         } finally {
             setBusy(false);
         }
+    };
+
+    const updateSettings = (patch: Partial<AppSettings>) => {
+        setSettings((prev) => ({ ...prev, ...patch }));
     };
 
     if (!sidebarOpen) return null;
@@ -505,6 +513,7 @@ const Sidebar: React.FC = () => {
 
                         <button
                             type="button"
+                            onClick={() => setSettingsOpen(true)}
                             title="Settings"
                             aria-label="Settings"
                             className={`p-2 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
@@ -512,7 +521,7 @@ const Sidebar: React.FC = () => {
                                     : "flex-1 justify-center"
                                 }`}
                         >
-                            <Settings className="w-4 h-4" />
+                            <SettingsIcon className="w-4 h-4" />
                         </button>
                     </div>
 
@@ -536,6 +545,28 @@ const Sidebar: React.FC = () => {
                     </div>
                 </div>
             </aside>
+
+            {/* ── Settings modal ── */}
+            {settingsOpen && (
+                <Settings
+                    settings={settings}
+                    persona={useChatStore.getState().persona}
+                    onUpdateSettings={updateSettings}
+                    onPersonaChange={(p) => {
+                        const store = useChatStore.getState();
+                        store.setPersona(p);
+                        store.switchPersona(p);
+                        setThemeName(PERSONA_THEME[p]);
+                    }}
+                    onClose={() => setSettingsOpen(false)}
+                    onExportData={() => {
+                        console.log("Export requested");
+                    }}
+                    onClearHistory={() => {
+                        console.log("Clear history requested");
+                    }}
+                />
+            )}
 
             {/* ── Confirm delete ── */}
             {deleting && (

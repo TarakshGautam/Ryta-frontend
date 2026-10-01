@@ -7,12 +7,8 @@ import React, {
     useCallback,
     useMemo,
 } from "react";
-import type { Appearance, ThemeName, Mode } from "../lib/types";
-import { MODE_TO_THEME } from "../lib/types";
+import type { Appearance, ThemeName } from "../lib/types";
 
-// ─────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────
 interface ThemeContextType {
     appearance: Appearance;
     resolvedAppearance: "light" | "dark";
@@ -20,24 +16,17 @@ interface ThemeContextType {
     setAppearance: (mode: Appearance) => void;
     setThemeName: (theme: ThemeName) => void;
     toggleTheme: () => void;
-    applyPersonaTheme: (mode: Mode) => void;
     isDark: boolean;
     isLight: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// ─────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────
 const THEME_KEY = "ryta_theme";
 const APPEARANCE_KEY = "ryta_appearance";
 const DEFAULT_THEME: ThemeName = "sweetheart";
 const DEFAULT_APPEARANCE: Appearance = "light";
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
 function resolveAppearance(app: Appearance): "light" | "dark" {
     if (app === "system") {
         if (typeof window === "undefined") return "light";
@@ -64,11 +53,7 @@ function safeSetLocalStorage(key: string, value: string): void {
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Provider
-// ─────────────────────────────────────────────────────────────
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    // ── State ──
     const [appearance, setAppearanceState] = useState<Appearance>(() => {
         const stored = safeGetLocalStorage(APPEARANCE_KEY) as Appearance | null;
         return stored || DEFAULT_APPEARANCE;
@@ -79,19 +64,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         return stored || DEFAULT_THEME;
     });
 
-    // ── Derived ──
     const resolvedAppearance = useMemo<"light" | "dark">(
         () => resolveAppearance(appearance),
         [appearance]
     );
 
-    // ── Apply theme to <html> ──
     useEffect(() => {
         const root = document.documentElement;
-
         root.setAttribute("data-theme", themeName);
         root.setAttribute("data-appearance", resolvedAppearance);
-
         safeSetLocalStorage(THEME_KEY, themeName);
         safeSetLocalStorage(APPEARANCE_KEY, appearance);
 
@@ -102,15 +83,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
     }, [appearance, themeName, resolvedAppearance]);
 
-    // ── Listen to system theme changes ──
     useEffect(() => {
         if (appearance !== "system") return;
         if (typeof window === "undefined") return;
 
         const mq = window.matchMedia("(prefers-color-scheme: dark)");
         const handler = () => {
-            // Force re-render by toggling a dummy state
-            // (resolvedAppearance will auto-update via useMemo)
             setAppearanceState((prev) => prev);
         };
 
@@ -118,7 +96,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         return () => mq.removeEventListener("change", handler);
     }, [appearance]);
 
-    // ── Actions ──
     const setAppearance = useCallback((mode: Appearance) => {
         setAppearanceState(mode);
     }, []);
@@ -134,14 +111,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         });
     }, []);
 
-    const applyPersonaTheme = useCallback((mode: Mode) => {
-        const mappedTheme = MODE_TO_THEME[mode];
-        if (mappedTheme) {
-            setThemeNameState(mappedTheme);
-        }
-    }, []);
-
-    // ── Memoized value ──
     const value = useMemo<ThemeContextType>(
         () => ({
             appearance,
@@ -150,7 +119,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             setAppearance,
             setThemeName,
             toggleTheme,
-            applyPersonaTheme,
             isDark: resolvedAppearance === "dark",
             isLight: resolvedAppearance === "light",
         }),
@@ -161,13 +129,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             setAppearance,
             setThemeName,
             toggleTheme,
-            applyPersonaTheme,
         ]
     );
 
-    // ═════════════════════════════════════════════════════════
-    // RETURN — ye ZAROORI tha
-    // ═════════════════════════════════════════════════════════
     return (
         <ThemeContext.Provider value={value}>
             {children}
@@ -175,9 +139,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Hook
-// ─────────────────────────────────────────────────────────────
 export function useTheme() {
     const context = useContext(ThemeContext);
     if (!context) {
