@@ -6,7 +6,7 @@ import type {
 } from "@/types/chat";
 import { DEFAULT_PERSONA } from "@/types/chat";
 
-export type WorkspaceView = "chat" | "diary";
+export type WorkspaceView = "chat" | "diary" | "vault";
 
 interface ChatState {
     // ── Data ──
@@ -19,6 +19,7 @@ interface ChatState {
 
     // ── UI ──
     sidebarOpen: boolean;
+    collapsed: boolean;
     searchQuery: string;
     isSending: boolean;
     webSearchEnabled: boolean;
@@ -54,6 +55,8 @@ interface ChatState {
     // ── UI toggles ──
     toggleSidebar: () => void;
     setSidebarOpen: (open: boolean) => void;
+    setCollapsed: (collapsed: boolean) => void;
+    toggleCollapsed: () => void;
     setSearchQuery: (query: string) => void;
     toggleWebSearch: () => void;
     setIsSending: (sending: boolean) => void;
@@ -75,6 +78,7 @@ export const useChatStore = create<ChatState>((set) => ({
     persona: DEFAULT_PERSONA,
 
     sidebarOpen: isDesktop(),
+    collapsed: false,
     searchQuery: "",
     isSending: false,
     webSearchEnabled: false,
@@ -106,10 +110,10 @@ export const useChatStore = create<ChatState>((set) => ({
             return {
                 conversations: exists
                     ? s.conversations.map((c) =>
-                          c.id === conversation.id
-                              ? { ...c, ...conversation }
-                              : c
-                      )
+                        c.id === conversation.id
+                            ? { ...c, ...conversation }
+                            : c
+                    )
                     : [conversation, ...s.conversations],
             };
         }),
@@ -130,7 +134,6 @@ export const useChatStore = create<ChatState>((set) => ({
 
     // ── Persona ──
     setPersona: (persona) => set({ persona }),
-    // Switching souls starts a clean room, same as a new chat.
     switchPersona: (persona) =>
         set((s) => {
             if (persona === s.persona) return s;
@@ -146,6 +149,9 @@ export const useChatStore = create<ChatState>((set) => ({
     toggleSidebar: () =>
         set((s) => ({ sidebarOpen: !s.sidebarOpen })),
     setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+    setCollapsed: (collapsed) => set({ collapsed }),
+    toggleCollapsed: () =>
+        set((s) => ({ collapsed: !s.collapsed })),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
     toggleWebSearch: () =>
         set((s) => ({ webSearchEnabled: !s.webSearchEnabled })),
