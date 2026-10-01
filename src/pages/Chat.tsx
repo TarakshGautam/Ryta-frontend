@@ -7,10 +7,6 @@ import DiaryPanel from "@/components/diary/DiaryPanel";
 import { useChatStore } from "@/store/chatStore";
 import { useDocumentTitle } from "@/hooks/useDocumenttitle";
 
-/**
- * Two columns and nothing else: threads on the left, one
- * conversation on the right. No third rail, no floating chrome.
- */
 const ChatPage: React.FC = () => {
     const { conversationId } = useParams<{ conversationId?: string }>();
     const navigate = useNavigate();
@@ -20,19 +16,37 @@ const ChatPage: React.FC = () => {
     const conversations = useChatStore((s) => s.conversations);
     const view = useChatStore((s) => s.view);
 
-    // Title comes from the thread list, not a separate field.
     const title =
         conversations.find((c) => c.id === activeChatId)?.title ?? null;
 
     useDocumentTitle(view === "diary" ? "Diary" : title || "Chat");
 
-    // Route → store, in both directions.
+    // ─────────────────────────────────────────────────────────
+    // Single source of truth:
+    // URL is truth on mount, store is truth after mount.
+    // When the URL changes (e.g. browser back/forward, or paste),
+    // sync the store to match.
+    // When the store changes (e.g. sidebar click), the caller
+    // (Sidebar) must navigate — this component does NOT navigate.
+    // ─────────────────────────────────────────────────────────
     useEffect(() => {
-        if (conversationId && conversationId !== activeChatId) {
-            setActiveChatId(conversationId);
-        }
-    }, [conversationId, activeChatId, setActiveChatId]);
+        if (conversationId === undefined) return;
+        if (conversationId === activeChatId) return;
+        setActiveChatId(conversationId || null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [conversationId]);
 
+    // ─────────────────────────────────────────────────────────
+    // New chat — clear store, go to /chat
+    // ─────────────────────────────────────────────────────────
+    const handleNewChat = useCallback(() => {
+        useChatStore.getState().startNewChat();
+        navigate("/chat", { replace: true });
+    }, [navigate]);
+
+    // ─────────────────────────────────────────────────────────
+    // Conversation just got created (first message sent)
+    // ─────────────────────────────────────────────────────────
     const handleConversationCreated = useCallback(
         (id: string) => {
             setActiveChatId(id);
@@ -41,20 +55,9 @@ const ChatPage: React.FC = () => {
         [setActiveChatId, navigate]
     );
 
-    const handleNewChat = useCallback(() => {
-        useChatStore.getState().startNewChat();
-        navigate("/chat", { replace: true });
-    }, [navigate]);
-
-    // Keep the URL honest when a thread is opened from the sidebar.
-    useEffect(() => {
-        if (!activeChatId) return;
-        if (conversationId !== activeChatId) {
-            navigate(`/chat/${activeChatId}`, { replace: true });
-        }
-    }, [activeChatId, conversationId, navigate]);
-
-    // Cmd/Ctrl+K — new thread
+    // ─────────────────────────────────────────────────────────
+    // Keyboard: Cmd/Ctrl+K → new chat
+    // ─────────────────────────────────────────────────────────
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {

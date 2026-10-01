@@ -59,7 +59,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const sendingRef = useRef(false);
-    const [atBottom, setAtBottom] = useState(true);
+    const [atBottom, setAtBottom] = useState(true); 
 
     // ── Scroll helpers ──
     const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
@@ -99,10 +99,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
             setError(null);
 
             try {
-                const rows = await getConversationMessages(
-                    userId,
-                    activeChatId
-                );
+                const rows = await getConversationMessages(userId, activeChatId);
                 if (cancelled) return;
 
                 const loaded: Message[] = rows.map((r) => ({
@@ -112,17 +109,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     persona: r.persona ?? persona,
                     mood: r.mood,
                     isSearchUsed: r.isSearchUsed,
-                    timestamp: r.createdAt
-                        ? new Date(r.createdAt)
-                        : new Date(),
+                    timestamp: r.createdAt ? new Date(r.createdAt) : new Date(),
                 }));
 
+                // Set messages FIRST (so UI shows immediately)
                 setMessages(loaded);
 
-                // The thread's owner decides the palette, however
-                // you got here — tapped, or opened from the sidebar.
+                // THEN derive persona + theme from owner
                 const owner = loaded[0]?.persona;
-                if (owner) {
+                if (owner && owner !== persona) {
                     useChatStore.getState().setPersona(owner);
                     setThemeName(PERSONA_THEME[owner]);
                 }
@@ -131,9 +126,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                 console.error("Could not load conversation:", e);
                 setMessages([]);
                 setError(
-                    e instanceof Error
-                        ? e.message
-                        : "Could not load this conversation."
+                    e instanceof Error ? e.message : "Could not load this conversation."
                 );
             } finally {
                 if (!cancelled) setMessagesLoading(false);
@@ -144,10 +137,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         return () => {
             cancelled = true;
         };
-        // `persona` is intentionally excluded: it is derived from the
-        // payload below, and depending on it would re-fetch on every switch.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeChatId, userId, setMessages, setMessagesLoading, setError, setThemeName]);
+    }, [activeChatId, userId]);
 
     // ── Send ──
     const deliver = useCallback(
