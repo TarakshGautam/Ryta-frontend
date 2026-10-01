@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import ChatTopBar from "@/components/chat/ChatTopBar";
 import ChatArea from "@/components/chat/ChatArea";
-import DiaryPanel from "@/components/diary/DiaryPanel";
 import { useChatStore } from "@/store/chatStore";
 import { useDocumentTitle } from "@/hooks/useDocumenttitle";
 
@@ -77,7 +76,6 @@ const ChatPage: React.FC = () => {
                 <ChatTopBar title={title} />
 
                 <main className="min-h-0 flex-1 overflow-hidden">
-                    {view === "diary" ? <DiaryPanel /> : null}
                     {view === "chat" ? (
                         <ChatArea
                             onConversationCreated={handleConversationCreated}
