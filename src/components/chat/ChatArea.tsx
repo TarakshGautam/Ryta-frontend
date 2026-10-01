@@ -155,13 +155,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
             } finally {
                 if (!cancelled) {
                     setMessagesLoading(false);
-                    // Instantly jump to bottom after history loads
-                    requestAnimationFrame(() => {
-                        const el = scrollRef.current;
-                        if (el) {
-                            el.scrollTop = el.scrollHeight;
-                        }
-                    });
                 }
             }
 
