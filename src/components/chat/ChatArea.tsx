@@ -76,9 +76,33 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
     };
 
     // Jump to the newest message the moment one lands.
+    // ── Auto-scroll: instant on chat switch, smooth on new message ──
+    const prevChatIdRef = useRef<string | null>(null);
+    const prevMessageCountRef = useRef<number>(0);
+
     useLayoutEffect(() => {
-        scrollToBottom("smooth");
-    }, [messages.length, isSending, scrollToBottom]);
+        const el = scrollRef.current;
+        if (!el) return;
+
+        const chatChanged = prevChatIdRef.current !== activeChatId;
+        const newMessage =
+            messages.length > prevMessageCountRef.current && !chatChanged;
+
+        // Update refs
+        prevChatIdRef.current = activeChatId;
+        prevMessageCountRef.current = messages.length;
+
+        // Don't scroll while loading
+        if (messagesLoading) return;
+
+        if (chatChanged) {
+            // Instantly jump to bottom (chat switched)
+            el.scrollTop = el.scrollHeight;
+        } else if (newMessage) {
+            // Smooth scroll for new messages
+            el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        }
+    }, [activeChatId, messages.length, messagesLoading]);
 
     // Reset the scroll position when we land in a different thread.
     useEffect(() => {
