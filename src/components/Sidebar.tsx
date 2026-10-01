@@ -280,7 +280,7 @@ const Sidebar: React.FC = () => {
     };
 
     const nav: {
-        id: "chat" | "diary" | "vault";
+        id: "chat";
         label: string;
         icon: React.ReactNode;
     }[] = [
@@ -288,16 +288,6 @@ const Sidebar: React.FC = () => {
                 id: "chat",
                 label: "Chat",
                 icon: <MessageSquare className="w-[15px] h-[15px]" />,
-            },
-            {
-                id: "vault",
-                label: "Memory Vault",
-                icon: <Sparkles className="w-[15px] h-[15px]" />,
-            },
-            {
-                id: "diary",
-                label: "Diary",
-                icon: <BookOpen className="w-[15px] h-[15px]" />,
             },
         ];
 
@@ -559,12 +549,6 @@ const Sidebar: React.FC = () => {
                         setThemeName(PERSONA_THEME[p]);
                     }}
                     onClose={() => setSettingsOpen(false)}
-                    onExportData={() => {
-                        console.log("Export requested");
-                    }}
-                    onClearHistory={() => {
-                        console.log("Clear history requested");
-                    }}
                 />
             )}
 
