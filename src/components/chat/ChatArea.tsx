@@ -129,9 +129,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     e instanceof Error ? e.message : "Could not load this conversation."
                 );
             } finally {
-                if (!cancelled) setMessagesLoading(false);
+                if (!cancelled) {
+                    setMessagesLoading(false);
+                    // Instantly jump to bottom after history loads
+                    requestAnimationFrame(() => {
+                        const el = scrollRef.current;
+                        if (el) {
+                            el.scrollTop = el.scrollHeight;
+                        }
+                    });
+                }
             }
-        };
 
         void load();
         return () => {
