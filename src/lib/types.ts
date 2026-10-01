@@ -1,7 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // RyTa.AI — Core Types
-// Mirrors the live Cloudflare Worker contract.
-// Two personas, two themes.
+// Single source of truth for themes & personas.
 // ─────────────────────────────────────────────────────────────
 
 // ─── Appearance ───
@@ -9,7 +8,7 @@ export type Appearance = "system" | "light" | "dark";
 export type ResolvedAppearance = "light" | "dark";
 
 // ─── Themes ───
-// Each persona owns a palette. Only two themes exist now.
+// Each persona owns a palette. Only two themes exist.
 export type ThemeName = "sweetheart" | "protector";
 
 // ─── Persona ───
@@ -23,12 +22,8 @@ export const PERSONA_THEME: Record<Persona, ThemeName> = {
 };
 
 // ─── UI Preferences ───
-// Only settings that are actually wired to behavior.
 export interface AppSettings {
-    // Appearance
     appearance: Appearance;
-
-    // Persona
     persona: Persona;
 }
 

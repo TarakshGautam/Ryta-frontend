@@ -1,5 +1,6 @@
 /* ============================================================
-   RyTa AI — Global Styles (v2, industry-standard)
+   RyTa AI — Global Styles
+   Single source of truth for theme tokens.
    ============================================================ */
 @import 'tailwindcss';
 @import "tw-animate-css";
@@ -23,9 +24,9 @@ body,
   box-sizing: border-box;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Heart Pulse — subtle, warm, breathing
-   ───────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   HEART PULSE — for loving/listening moments
+   ───────────────────────────────────────────── */
 @keyframes ryta-heart-pulse {
   0% {
     transform: scale(1);
@@ -65,9 +66,12 @@ body,
   will-change: transform, opacity, filter;
 }
 
+/* ─────────────────────────────────────────────
+   BODY
+   ───────────────────────────────────────────── */
 body {
-    font-family: 'Quicksand', system-ui, -apple-system, sans-serif;
-      font-feature-settings: 'ss01', 'ss02';
+  font-family: 'Quicksand', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'ss01', 'ss02';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -77,7 +81,6 @@ body {
 /* ─────────────────────────────────────────────
    FONT UTILITIES
    ───────────────────────────────────────────── */
-/* Romantic script — for logo, headings, hero text */
 .font-serif,
 .font-script {
   font-family: 'Sacramento', 'Caveat', cursive;
@@ -85,232 +88,96 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Handwritten — for diary, personal notes */
 .font-hand {
   font-family: 'Caveat', cursive;
 }
 
-/* Mono — for code */
 .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
 /* ─────────────────────────────────────────────
    THEME TOKENS
+   Single source of truth.
+   Two personas → two themes.
    ───────────────────────────────────────────── */
 
-/* SWEETHEART — default, warm rose */
+/* SWEETHEART — Ryku, warm rose */
 :root,
 [data-theme='sweetheart'][data-appearance='light'] {
-  --ryta-bg: #fbf7f5;
-  --ryta-surface: #f5eeeb;
-  --ryta-surface-raised: #ffffff;
-  --ryta-text: #2a1f26;
-  --ryta-text-muted: #6b5a63;
-  --ryta-text-subtle: #9a8a93;
-  --ryta-primary: #b8446a;
-  --ryta-primary-hover: #a03a5c;
-  --ryta-primary-fg: #ffffff;
-  --ryta-border: #ebdce3;
-  --ryta-border-strong: #d9c4ce;
-  --ryta-user-bubble-bg: #f0e0e7;
-  --ryta-user-bubble-fg: #2a1f26;
+  --ryta-bg: #FFF5F7;
+  --ryta-surface: #FFFFFF;
+  --ryta-surface-raised: #FFFFFF;
+  --ryta-text: #4C0519;
+  --ryta-text-muted: #9F1239;
+  --ryta-text-subtle: #C77A93;
+  --ryta-primary: #E11D48;
+  --ryta-primary-hover: #BE123C;
+  --ryta-primary-fg: #FFFFFF;
+  --ryta-border: #FFE4E6;
+  --ryta-border-strong: #FBCFE8;
+  --ryta-user-bubble-bg: #FFF1F2;
+  --ryta-user-bubble-fg: #4C0519;
+  --ryta-glow: rgba(225, 29, 72, 0.12);
   color-scheme: light;
 }
 
 [data-theme='sweetheart'][data-appearance='dark'] {
-  --ryta-bg: #1a1319;
-  --ryta-surface: #221a22;
-  --ryta-surface-raised: #2c2129;
-  --ryta-text: #f2e8ec;
-  --ryta-text-muted: #a89aa2;
-  --ryta-text-subtle: #6e5f68;
-  --ryta-primary: #d66e94;
-  --ryta-primary-hover: #e0809f;
-  --ryta-primary-fg: #1a1319;
-  --ryta-border: #362b33;
-  --ryta-border-strong: #4a3b44;
-  --ryta-user-bubble-bg: #3a2734;
-  --ryta-user-bubble-fg: #f2e8ec;
+  --ryta-bg: #12070B;
+  --ryta-surface: #210D15;
+  --ryta-surface-raised: #2C1220;
+  --ryta-text: #FFF1F2;
+  --ryta-text-muted: #B4788A;
+  --ryta-text-subtle: #8B5A6B;
+  --ryta-primary: #F43F5E;
+  --ryta-primary-hover: #FB7185;
+  --ryta-primary-fg: #1A060E;
+  --ryta-border: #3D1827;
+  --ryta-border-strong: #5C2438;
+  --ryta-user-bubble-bg: #3D1827;
+  --ryta-user-bubble-fg: #FFF1F2;
+  --ryta-glow: rgba(244, 63, 94, 0.28);
   color-scheme: dark;
 }
 
-/* SAVAGE — crimson volt */
-[data-theme='savage'][data-appearance='light'] {
-  --ryta-bg: #fbf6f6;
-  --ryta-surface: #f4eaea;
-  --ryta-surface-raised: #ffffff;
-  --ryta-text: #2b1414;
-  --ryta-text-muted: #6f4a4a;
-  --ryta-text-subtle: #a37f7f;
-  --ryta-primary: #a82a2a;
-  --ryta-primary-hover: #8f2222;
-  --ryta-primary-fg: #ffffff;
-  --ryta-border: #ecd8d8;
-  --ryta-border-strong: #dababa;
-  --ryta-user-bubble-bg: #eedcdc;
-  --ryta-user-bubble-fg: #2b1414;
-  color-scheme: light;
-}
-
-[data-theme='savage'][data-appearance='dark'] {
-  --ryta-bg: #1a0e0e;
-  --ryta-surface: #221212;
-  --ryta-surface-raised: #2c1818;
-  --ryta-text: #f2e6e6;
-  --ryta-text-muted: #a88a8a;
-  --ryta-text-subtle: #6e5050;
-  --ryta-primary: #d44444;
-  --ryta-primary-hover: #e05555;
-  --ryta-primary-fg: #1a0e0e;
-  --ryta-border: #3a2020;
-  --ryta-border-strong: #4e2c2c;
-  --ryta-user-bubble-bg: #3a2020;
-  --ryta-user-bubble-fg: #f2e6e6;
-  color-scheme: dark;
-}
-
-/* CALM — moonwater teal */
-[data-theme='calm'][data-appearance='light'] {
-  --ryta-bg: #f4faf9;
-  --ryta-surface: #eaf3f1;
-  --ryta-surface-raised: #ffffff;
-  --ryta-text: #12211e;
-  --ryta-text-muted: #4a6863;
-  --ryta-text-subtle: #8aa8a2;
-  --ryta-primary: #2d7a6e;
-  --ryta-primary-hover: #25675c;
-  --ryta-primary-fg: #ffffff;
-  --ryta-border: #d6e8e3;
-  --ryta-border-strong: #b9d6cf;
-  --ryta-user-bubble-bg: #dcece8;
-  --ryta-user-bubble-fg: #12211e;
-  color-scheme: light;
-}
-
-[data-theme='calm'][data-appearance='dark'] {
-  --ryta-bg: #0e1a18;
-  --ryta-surface: #162220;
-  --ryta-surface-raised: #1e2c29;
-  --ryta-text: #e6f0ee;
-  --ryta-text-muted: #8aa8a2;
-  --ryta-text-subtle: #50706a;
-  --ryta-primary: #3f9c8c;
-  --ryta-primary-hover: #4aad9c;
-  --ryta-primary-fg: #0e1a18;
-  --ryta-border: #243632;
-  --ryta-border-strong: #344a44;
-  --ryta-user-bubble-bg: #243632;
-  --ryta-user-bubble-fg: #e6f0ee;
-  color-scheme: dark;
-}
-
-/* PROTECTOR — guardian ember */
+/* PROTECTOR — Takshu, guardian ember */
 [data-theme='protector'][data-appearance='light'] {
-  --ryta-bg: #fcf9f4;
-  --ryta-surface: #f4ecdf;
-  --ryta-surface-raised: #ffffff;
-  --ryta-text: #221a10;
-  --ryta-text-muted: #6a5842;
-  --ryta-text-subtle: #a18d72;
-  --ryta-primary: #996a2a;
-  --ryta-primary-hover: #835a22;
-  --ryta-primary-fg: #ffffff;
-  --ryta-border: #e9dcc5;
-  --ryta-border-strong: #d4c1a3;
-  --ryta-user-bubble-bg: #eee0c7;
-  --ryta-user-bubble-fg: #221a10;
+  --ryta-bg: #FAF9F5;
+  --ryta-surface: #FFFFFF;
+  --ryta-surface-raised: #FFFFFF;
+  --ryta-text: #1C1917;
+  --ryta-text-muted: #78716C;
+  --ryta-text-subtle: #A8A29E;
+  --ryta-primary: #D97706;
+  --ryta-primary-hover: #B45309;
+  --ryta-primary-fg: #FFFFFF;
+  --ryta-border: #E7E5E4;
+  --ryta-border-strong: #D6D3D1;
+  --ryta-user-bubble-bg: #FEF3C7;
+  --ryta-user-bubble-fg: #1C1917;
+  --ryta-glow: rgba(217, 119, 6, 0.10);
   color-scheme: light;
 }
 
 [data-theme='protector'][data-appearance='dark'] {
-  --ryta-bg: #16120c;
-  --ryta-surface: #1e1912;
-  --ryta-surface-raised: #26201a;
-  --ryta-text: #f0e8dc;
-  --ryta-text-muted: #a89278;
-  --ryta-text-subtle: #6b5a44;
-  --ryta-primary: #c9964a;
-  --ryta-primary-hover: #d6a45c;
-  --ryta-primary-fg: #16120c;
-  --ryta-border: #322a20;
-  --ryta-border-strong: #463a2c;
-  --ryta-user-bubble-bg: #322a20;
-  --ryta-user-bubble-fg: #f0e8dc;
+  --ryta-bg: #0E0E0C;
+  --ryta-surface: #181814;
+  --ryta-surface-raised: #232320;
+  --ryta-text: #FEFCE8;
+  --ryta-text-muted: #9CA3AF;
+  --ryta-text-subtle: #6B7280;
+  --ryta-primary: #F59E0B;
+  --ryta-primary-hover: #FBBF24;
+  --ryta-primary-fg: #1C1917;
+  --ryta-border: #2D2D24;
+  --ryta-border-strong: #45433A;
+  --ryta-user-bubble-bg: #2D2D24;
+  --ryta-user-bubble-fg: #FEFCE8;
+  --ryta-glow: rgba(245, 158, 11, 0.20);
   color-scheme: dark;
 }
 
-/* AURAMAN — velvet plum */
-[data-theme='auraman'][data-appearance='light'] {
-  --ryta-bg: #f9f5f7;
-  --ryta-surface: #f0e8ec;
-  --ryta-surface-raised: #ffffff;
-  --ryta-text: #241620;
-  --ryta-text-muted: #644c5a;
-  --ryta-text-subtle: #9a7f90;
-  --ryta-primary: #8c4566;
-  --ryta-primary-hover: #773a56;
-  --ryta-primary-fg: #ffffff;
-  --ryta-border: #e4d4dc;
-  --ryta-border-strong: #cdb5c2;
-  --ryta-user-bubble-bg: #ead7e0;
-  --ryta-user-bubble-fg: #241620;
-  color-scheme: light;
-}
-
-[data-theme='auraman'][data-appearance='dark'] {
-  --ryta-bg: #170f14;
-  --ryta-surface: #1f161c;
-  --ryta-surface-raised: #281c24;
-  --ryta-text: #ede2e9;
-  --ryta-text-muted: #a08a98;
-  --ryta-text-subtle: #68505e;
-  --ryta-primary: #c47098;
-  --ryta-primary-hover: #d480a4;
-  --ryta-primary-fg: #170f14;
-  --ryta-border: #2f2229;
-  --ryta-border-strong: #43313c;
-  --ryta-user-bubble-bg: #2f2229;
-  --ryta-user-bubble-fg: #ede2e9;
-  color-scheme: dark;
-}
-
-/* MENTOR — forest scholar */
-[data-theme='mentor'][data-appearance='light'] {
-  --ryta-bg: #f6f8f7;
-  --ryta-surface: #eaeff0;
-  --ryta-surface-raised: #ffffff;
-  --ryta-text: #16201e;
-  --ryta-text-muted: #4c5c5a;
-  --ryta-text-subtle: #8ea19e;
-  --ryta-primary: #3a6b4c;
-  --ryta-primary-hover: #2f5a3f;
-  --ryta-primary-fg: #ffffff;
-  --ryta-border: #d8e0dd;
-  --ryta-border-strong: #b8c6c1;
-  --ryta-user-bubble-bg: #dce8e0;
-  --ryta-user-bubble-fg: #16201e;
-  color-scheme: light;
-}
-
-[data-theme='mentor'][data-appearance='dark'] {
-  --ryta-bg: #0e1614;
-  --ryta-surface: #141e1c;
-  --ryta-surface-raised: #1c2825;
-  --ryta-text: #e6efe9;
-  --ryta-text-muted: #8aa19a;
-  --ryta-text-subtle: #4f645e;
-  --ryta-primary: #5ba877;
-  --ryta-primary-hover: #6bb987;
-  --ryta-primary-fg: #0e1614;
-  --ryta-border: #22302d;
-  --ryta-border-strong: #344440;
-  --ryta-user-bubble-bg: #22302d;
-  --ryta-user-bubble-fg: #e6efe9;
-  color-scheme: dark;
-}
-
- /* ─────────────────────────────────────────────
+/* ─────────────────────────────────────────────
    SCROLLBAR
    ───────────────────────────────────────────── */
 .ryta-scroll {
@@ -337,7 +204,28 @@ body {
 .ryta-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--ryta-text-subtle);
   background-clip: content-box;
-} 
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ryta-border);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ryta-border-strong);
+  background-clip: content-box;
+}
 
 /* ─────────────────────────────────────────────
    TEXT SELECTION
@@ -348,7 +236,7 @@ body {
 }
 
 /* ─────────────────────────────────────────────
-   LANDING PAGE (unchanged — pink atmosphere)
+   LANDING PAGE
    ───────────────────────────────────────────── */
 .ryta-landing-page {
   background:
@@ -358,16 +246,13 @@ body {
 }
 
 /* ─────────────────────────────────────────────
-   SHELL
+   SHELL & PANELS
    ───────────────────────────────────────────── */
 .ryta-shell {
   background-color: var(--ryta-bg);
   color: var(--ryta-text);
 }
 
-/* ─────────────────────────────────────────────
-   PANELS
-   ───────────────────────────────────────────── */
 .ryta-panel {
   position: absolute;
   inset: 0;
@@ -459,56 +344,8 @@ body {
 }
 
 /* ─────────────────────────────────────────────
-   SCROLLBAR — theme-aware, subtle
+   TAILWIND THEME MAPPING
    ───────────────────────────────────────────── */
-.ryta-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--ryta-border-strong) transparent;
-}
-
-.ryta-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.ryta-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ryta-scroll::-webkit-scrollbar-thumb {
-  background: var(--ryta-border-strong);
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.ryta-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--ryta-text-subtle);
-  background-clip: content-box;
-}
-
-/* Global subtle scrollbar (browser default fallback) */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--ryta-border);
-  border-radius: 5px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--ryta-border-strong);
-  background-clip: content-box;
-}
-
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
@@ -625,9 +462,11 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
