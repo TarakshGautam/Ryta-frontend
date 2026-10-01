@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
     Archive,
-    BookOpen,
     MessageSquare,
     Moon,
     MoreHorizontal,
@@ -19,7 +18,6 @@ import {
     Plus,
     Search,
     Settings as SettingsIcon,
-    Sparkles,
     Sun,
     Trash2,
     X,
