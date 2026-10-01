@@ -551,7 +551,7 @@ const Sidebar: React.FC = () => {
                     onClose={() => setSettingsOpen(false)}
                 />
             )}
-
+{/*  */}
             {/* ── Confirm delete ── */}
             {deleting && (
                 <div
