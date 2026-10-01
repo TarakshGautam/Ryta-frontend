@@ -9,13 +9,18 @@ import {
     Archive,
     BookOpen,
     MessageSquare,
+    Moon,
     MoreHorizontal,
     PanelLeftClose,
+    PanelLeftOpen,
     Pencil,
     Pin,
     PinOff,
     Plus,
     Search,
+    Settings,
+    Sparkles,
+    Sun,
     Trash2,
     X,
 } from "lucide-react";
@@ -60,13 +65,19 @@ const groupFor = (iso?: string): DateGroup => {
     return "Older";
 };
 
+// ─────────────────────────────────────────────────────────────
+// Sidebar
+// ─────────────────────────────────────────────────────────────
 const Sidebar: React.FC = () => {
     const { user } = useUser();
     const userId = user?.id;
-    const { setThemeName } = useTheme();
+    const { setThemeName, resolvedAppearance, toggleTheme } = useTheme();
 
     const sidebarOpen = useChatStore((s) => s.sidebarOpen);
     const toggleSidebar = useChatStore((s) => s.toggleSidebar);
+    const collapsed = useChatStore((s) => s.collapsed);
+    const toggleCollapsed = useChatStore((s) => s.toggleCollapsed);
+
     const conversations = useChatStore((s) => s.conversations);
     const setConversations = useChatStore((s) => s.setConversations);
     const loading = useChatStore((s) => s.conversationsLoading);
@@ -85,11 +96,14 @@ const Sidebar: React.FC = () => {
     const [menuFor, setMenuFor] = useState<string | null>(null);
     const [renaming, setRenaming] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState("");
-    const [deleting, setDeleting] = useState<ConversationSummary | null>(null);
+    const [deleting, setDeleting] =
+        useState<ConversationSummary | null>(null);
     const [busy, setBusy] = useState(false);
 
     const menuRef = useRef<HTMLDivElement>(null);
     const renameRef = useRef<HTMLInputElement>(null);
+
+    const isDark = resolvedAppearance === "dark";
 
     // ── Load threads ──
     const load = useCallback(async () => {
@@ -109,11 +123,14 @@ const Sidebar: React.FC = () => {
         void load();
     }, [load]);
 
-    // Close the row menu on any outside click
+    // Close menu on outside click
     useEffect(() => {
         if (!menuFor) return;
         const onDown = (e: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(e.target as Node)
+            ) {
                 setMenuFor(null);
             }
         };
@@ -128,7 +145,7 @@ const Sidebar: React.FC = () => {
         }
     }, [renaming]);
 
-    // ── Filtering + grouping ──
+    // ── Filter + group ──
     const { pinned, groups, total } = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
         const matching = conversations.filter((c) =>
@@ -158,8 +175,6 @@ const Sidebar: React.FC = () => {
 
     const openConversation = (c: ConversationSummary) => {
         setActiveChatId(c.id);
-        // Paint the thread's owner straight away — the history
-        // effect confirms it once messages land.
         setPersona(c.persona);
         setThemeName(PERSONA_THEME[c.persona]);
         setView("chat");
@@ -187,7 +202,6 @@ const Sidebar: React.FC = () => {
         cancelRename();
         if (!title || !userId) return;
         const previous = conversations.find((c) => c.id === id)?.title;
-        // Optimistic — the list shouldn't flicker on a rename.
         updateConversation(id, { title });
         try {
             await renameConversation(userId, id, title);
@@ -239,7 +253,6 @@ const Sidebar: React.FC = () => {
 
     if (!sidebarOpen) return null;
 
-    // Shared by every group — one wiring point for all rows.
     const rowProps = {
         activeChatId,
         renaming,
@@ -258,51 +271,79 @@ const Sidebar: React.FC = () => {
         onDeleteRequest: setDeleting,
     };
 
-    const nav: { id: "chat" | "diary"; label: string; icon: React.ReactNode }[] =
-        [
+    const nav: {
+        id: "chat" | "diary" | "vault";
+        label: string;
+        icon: React.ReactNode;
+    }[] = [
             {
                 id: "chat",
                 label: "Chat",
-                icon: <MessageSquare className="w-4 h-4" />,
+                icon: <MessageSquare className="w-[15px] h-[15px]" />,
+            },
+            {
+                id: "vault",
+                label: "Memory Vault",
+                icon: <Sparkles className="w-[15px] h-[15px]" />,
             },
             {
                 id: "diary",
                 label: "Diary",
-                icon: <BookOpen className="w-4 h-4" />,
+                icon: <BookOpen className="w-[15px] h-[15px]" />,
             },
         ];
 
+    // ── Width ──
+    const width = collapsed ? 60 : 260;
+
     return (
         <>
-            {/* Drawer backdrop — mobile only */}
+            {/* Mobile backdrop */}
             <div
                 className="fixed inset-0 z-30 bg-black/40 lg:hidden"
                 onClick={toggleSidebar}
                 aria-hidden="true"
             />
 
-            <aside className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)]">
-                {/* ── Brand ── */}
+            <aside
+                style={{ width }}
+                className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)] transition-[width] duration-200 ease-out overflow-hidden"
+            >
+                {/* ── Brand row ── */}
                 <div className="flex h-12 shrink-0 items-center justify-between px-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <img
-                            src="/logo.png"
-                            alt=""
-                            className="h-6 w-6 rounded-md object-contain"
-                        />
-                        <span className="truncate font-serif text-[15px] font-semibold tracking-tight text-[var(--ryta-text)]">
-                            RyTa.AI
-                        </span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={toggleSidebar}
-                        title="Collapse sidebar"
-                        aria-label="Collapse sidebar"
-                        className="p-1.5 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors"
-                    >
-                        <PanelLeftClose className="w-4 h-4" />
-                    </button>
+                    {!collapsed ? (
+                        <>
+                            <div className="flex min-w-0 items-center gap-2">
+                                <img
+                                    src="/logo.png"
+                                    alt=""
+                                    className="h-6 w-6 rounded-md object-contain"
+                                />
+                                <span className="truncate font-serif text-[15px] font-semibold tracking-tight text-[var(--ryta-text)]">
+                                    RyTa.AI
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={toggleCollapsed}
+                                title="Collapse sidebar"
+                                aria-label="Collapse sidebar"
+                                className="p-1.5 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors"
+                            >
+                                <PanelLeftClose className="w-4 h-4" />
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={toggleCollapsed}
+                            title="Expand sidebar"
+                            aria-label="Expand sidebar"
+                            className="mx-auto p-1.5 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors"
+                        >
+                            <PanelLeftOpen className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
 
                 {/* ── New chat ── */}
@@ -310,10 +351,14 @@ const Sidebar: React.FC = () => {
                     <button
                         type="button"
                         onClick={handleNewChat}
-                        className="flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-[13px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface)]"
+                        title="New chat"
+                        className={`flex h-9 items-center gap-2 rounded-lg text-[13px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface)] ${collapsed
+                                ? "w-9 mx-auto justify-center"
+                                : "w-full px-2.5"
+                            }`}
                     >
-                        <Plus className="w-4 h-4 text-[var(--ryta-text-muted)]" />
-                        New chat
+                        <Plus className="w-4 h-4 text-[var(--ryta-text-muted)] shrink-0" />
+                        {!collapsed && <span>New chat</span>}
                     </button>
                 </div>
 
@@ -329,99 +374,165 @@ const Sidebar: React.FC = () => {
                                     setView(item.id);
                                     closeOnMobile();
                                 }}
+                                title={collapsed ? item.label : undefined}
                                 aria-current={active ? "page" : undefined}
-                                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors ${
-                                    active
+                                className={`flex items-center gap-2.5 rounded-lg text-[13px] transition-colors ${collapsed
+                                        ? "w-9 mx-auto justify-center py-2"
+                                        : "w-full px-2.5 py-2"
+                                    } ${active
                                         ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
                                         : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
-                                }`}
+                                    }`}
                             >
                                 <span className="shrink-0">{item.icon}</span>
-                                {item.label}
+                                {!collapsed && (
+                                    <span className="truncate">
+                                        {item.label}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}
                 </nav>
 
-                {/* ── Search ── */}
-                <div className="px-2.5 py-2">
-                    <div className="relative">
-                        <Search
-                            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ryta-text-subtle)]"
-                            aria-hidden="true"
-                        />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search chats"
-                            aria-label="Search chats"
-                            className="h-8 w-full rounded-lg border border-transparent bg-transparent pl-8 pr-7 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:border-[var(--ryta-border)] focus:border-[var(--ryta-border-strong)] focus:bg-[var(--ryta-surface)]"
-                        />
-                        {searchQuery && (
-                            <button
-                                type="button"
-                                onClick={() => setSearchQuery("")}
-                                title="Clear search"
-                                aria-label="Clear search"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--ryta-text-subtle)] hover:text-[var(--ryta-text)]"
-                            >
-                                <X className="w-3 h-3" />
-                            </button>
-                        )}
+                {/* ── Search (expanded only) ── */}
+                {!collapsed && (
+                    <div className="px-2.5 py-2">
+                        <div className="relative">
+                            <Search
+                                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ryta-text-subtle)]"
+                                aria-hidden="true"
+                            />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) =>
+                                    setSearchQuery(e.target.value)
+                                }
+                                placeholder="Search chats"
+                                aria-label="Search chats"
+                                className="h-8 w-full rounded-lg border border-transparent bg-transparent pl-8 pr-7 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:border-[var(--ryta-border)] focus:border-[var(--ryta-border-strong)] focus:bg-[var(--ryta-surface)]"
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery("")}
+                                    title="Clear search"
+                                    aria-label="Clear search"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--ryta-text-subtle)] hover:text-[var(--ryta-text)]"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <div className="mx-2.5 h-px shrink-0 bg-[var(--ryta-border)]" />
 
-                {/* ── Threads ── */}
-                <div className="ryta-scroll flex-1 overflow-y-auto px-1.5 py-2">
-                    {loading && conversations.length === 0 ? (
-                        <p className="px-2.5 py-6 text-center text-[11px] text-[var(--ryta-text-subtle)]">
-                            Loading…
-                        </p>
-                    ) : total === 0 ? (
-                        <p className="px-2.5 py-6 text-center text-[11px] leading-relaxed text-[var(--ryta-text-subtle)]">
-                            {searchQuery
-                                ? "Nothing matches that."
-                                : "No conversations yet."}
-                        </p>
-                    ) : (
-                        <>
-                            {pinned.length > 0 && (
-                                <ChatGroup
-                                    label="Pinned"
-                                    chats={pinned}
-                                    isPinned
-                                    {...rowProps}
-                                />
-                            )}
-                            {GROUP_ORDER.map((label) =>
-                                groups[label].length > 0 ? (
+                {/* ── Threads (expanded only) ── */}
+                {!collapsed && (
+                    <div className="ryta-scroll flex-1 overflow-y-auto px-1.5 py-2">
+                        {loading && conversations.length === 0 ? (
+                            <p className="px-2.5 py-6 text-center text-[11px] text-[var(--ryta-text-subtle)]">
+                                Loading…
+                            </p>
+                        ) : total === 0 ? (
+                            <p className="px-2.5 py-6 text-center text-[11px] leading-relaxed text-[var(--ryta-text-subtle)]">
+                                {searchQuery
+                                    ? "Nothing matches that."
+                                    : "No conversations yet."}
+                            </p>
+                        ) : (
+                            <>
+                                {pinned.length > 0 && (
                                     <ChatGroup
-                                        key={label}
-                                        label={label}
-                                        chats={groups[label]}
+                                        label="Pinned"
+                                        chats={pinned}
+                                        isPinned
                                         {...rowProps}
                                     />
-                                ) : null
-                            )}
-                        </>
-                    )}
-                </div>
+                                )}
+                                {GROUP_ORDER.map((label) =>
+                                    groups[label].length > 0 ? (
+                                        <ChatGroup
+                                            key={label}
+                                            label={label}
+                                            chats={groups[label]}
+                                            {...rowProps}
+                                        />
+                                    ) : null
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
 
-                {/* ── Account ── */}
-                <div className="shrink-0 border-t border-[var(--ryta-border)] p-2.5">
-                    <div className="flex items-center gap-2.5">
+                {/* Spacer for collapsed mode */}
+                {collapsed && <div className="flex-1" />}
+
+                {/* ── Bottom bar: theme + settings + account ── */}
+                <div className="shrink-0 border-t border-[var(--ryta-border)] p-2">
+                    {/* Theme + Settings */}
+                    <div
+                        className={`flex items-center ${collapsed ? "flex-col gap-1" : "gap-1"
+                            }`}
+                    >
+                        <button
+                            type="button"
+                            onClick={toggleTheme}
+                            title={
+                                isDark
+                                    ? "Switch to light"
+                                    : "Switch to dark"
+                            }
+                            aria-label={
+                                isDark
+                                    ? "Switch to light"
+                                    : "Switch to dark"
+                            }
+                            className={`p-2 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
+                                    ? "w-9 justify-center"
+                                    : "flex-1 justify-center"
+                                }`}
+                        >
+                            {isDark ? (
+                                <Sun className="w-4 h-4" />
+                            ) : (
+                                <Moon className="w-4 h-4" />
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            title="Settings"
+                            aria-label="Settings"
+                            className={`p-2 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
+                                    ? "w-9 justify-center"
+                                    : "flex-1 justify-center"
+                                }`}
+                        >
+                            <Settings className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    {/* Account */}
+                    <div
+                        className={`mt-2 flex items-center ${collapsed ? "justify-center" : "gap-2.5"
+                            }`}
+                    >
                         <UserButton />
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-[12.5px] font-medium text-[var(--ryta-text)]">
-                                {user?.fullName || "You"}
-                            </p>
-                            <p className="truncate text-[10.5px] text-[var(--ryta-text-subtle)]">
-                                {user?.primaryEmailAddress?.emailAddress ?? ""}
-                            </p>
-                        </div>
+                        {!collapsed && (
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-[12.5px] font-medium text-[var(--ryta-text)]">
+                                    {user?.fullName || "You"}
+                                </p>
+                                <p className="truncate text-[10.5px] text-[var(--ryta-text-subtle)]">
+                                    {user?.primaryEmailAddress?.emailAddress ??
+                                        ""}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </aside>
@@ -495,12 +606,16 @@ interface RowProps {
 }
 
 const ChatGroup: React.FC<
-    { label: string; chats: ConversationSummary[]; isPinned?: boolean } & RowProps
+    { label: string; chats: ConversationSummary[]; isPinned?: boolean } &
+    RowProps
 > = ({ label, chats, isPinned = false, ...row }) => (
     <div className="mb-3">
         <h3 className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--ryta-text-subtle)]">
             {isPinned && (
-                <span className="mr-1 text-[var(--ryta-primary)]" aria-hidden="true">
+                <span
+                    className="mr-1 text-[var(--ryta-primary)]"
+                    aria-hidden="true"
+                >
                     ◆
                 </span>
             )}
@@ -534,108 +649,112 @@ const ChatRow: React.FC<
     onArchive,
     onDeleteRequest,
 }) => {
-    const isActive = conversation.id === activeChatId;
-    const isRenaming = conversation.id === renaming;
-    const isMenuOpen = conversation.id === menuFor;
+        const isActive = conversation.id === activeChatId;
+        const isRenaming = conversation.id === renaming;
+        const isMenuOpen = conversation.id === menuFor;
 
-    return (
-        <li className="group relative">
-            {isRenaming ? (
-                <input
-                    ref={renameRef}
-                    type="text"
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={() => void onCommitRename(conversation.id)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                            e.preventDefault();
-                            void onCommitRename(conversation.id);
-                        }
-                        if (e.key === "Escape") {
-                            e.preventDefault();
-                            onCancelRename();
-                        }
-                    }}
-                    aria-label="Rename conversation"
-                    className="w-full rounded-md border border-[var(--ryta-border-strong)] bg-[var(--ryta-surface-raised)] px-2 py-1.5 text-[12.5px] text-[var(--ryta-text)] outline-none"
-                />
-            ) : (
-                <button
-                    type="button"
-                    onClick={() => onOpen(conversation)}
-                    aria-current={isActive ? "true" : undefined}
-                    className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[12.5px] transition-colors ${
-                        isActive
-                            ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
-                            : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
-                    }`}
-                >
-                    <span className="truncate">{conversation.title}</span>
-                </button>
-            )}
-
-            {!isRenaming && (
-                <div
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 transition-opacity ${
-                        isMenuOpen
-                            ? "opacity-100"
-                            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
-                    }`}
-                >
+        return (
+            <li className="group relative">
+                {isRenaming ? (
+                    <input
+                        ref={renameRef}
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => void onCommitRename(conversation.id)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                void onCommitRename(conversation.id);
+                            }
+                            if (e.key === "Escape") {
+                                e.preventDefault();
+                                onCancelRename();
+                            }
+                        }}
+                        aria-label="Rename conversation"
+                        className="w-full rounded-md border border-[var(--ryta-border-strong)] bg-[var(--ryta-surface-raised)] px-2 py-1.5 text-[12.5px] text-[var(--ryta-text)] outline-none"
+                    />
+                ) : (
                     <button
                         type="button"
-                        onClick={() =>
-                            setMenuFor(isMenuOpen ? null : conversation.id)
-                        }
-                        title="More"
-                        aria-label={`Options for ${conversation.title}`}
-                        aria-expanded={isMenuOpen}
-                        className="rounded-md p-1 text-[var(--ryta-text-subtle)] transition-colors hover:bg-[var(--ryta-surface-raised)] hover:text-[var(--ryta-text)]"
+                        onClick={() => onOpen(conversation)}
+                        aria-current={isActive ? "true" : undefined}
+                        className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[12.5px] transition-colors ${isActive
+                                ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
+                                : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
+                            }`}
                     >
-                        <MoreHorizontal className="w-3.5 h-3.5" />
+                        <span className="truncate">{conversation.title}</span>
                     </button>
+                )}
 
-                    {isMenuOpen && (
-                        <div
-                            ref={menuRef}
-                            className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1"
+                {!isRenaming && (
+                    <div
+                        className={`absolute right-1 top-1/2 -translate-y-1/2 transition-opacity ${isMenuOpen
+                                ? "opacity-100"
+                                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                            }`}
+                    >
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setMenuFor(isMenuOpen ? null : conversation.id)
+                            }
+                            title="More"
+                            aria-label={`Options for ${conversation.title}`}
+                            aria-expanded={isMenuOpen}
+                            className="rounded-md p-1 text-[var(--ryta-text-subtle)] transition-colors hover:bg-[var(--ryta-surface-raised)] hover:text-[var(--ryta-text)]"
                         >
-                            <MenuItem
-                                icon={<Pencil className="w-3.5 h-3.5" />}
-                                label="Rename"
-                                onClick={() => onBeginRename(conversation)}
-                            />
-                            <MenuItem
-                                icon={
-                                    conversation.is_pinned ? (
-                                        <PinOff className="w-3.5 h-3.5" />
-                                    ) : (
-                                        <Pin className="w-3.5 h-3.5" />
-                                    )
-                                }
-                                label={conversation.is_pinned ? "Unpin" : "Pin"}
-                                onClick={() => onTogglePin(conversation)}
-                            />
-                            <MenuItem
-                                icon={<Archive className="w-3.5 h-3.5" />}
-                                label="Archive"
-                                onClick={() => onArchive(conversation)}
-                            />
-                            <div className="my-1 h-px bg-[var(--ryta-border)]" />
-                            <MenuItem
-                                icon={<Trash2 className="w-3.5 h-3.5" />}
-                                label="Delete"
-                                danger
-                                onClick={() => onDeleteRequest(conversation)}
-                            />
-                        </div>
-                    )}
-                </div>
-            )}
-        </li>
-    );
-};
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                        </button>
+
+                        {isMenuOpen && (
+                            <div
+                                ref={menuRef}
+                                className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1"
+                            >
+                                <MenuItem
+                                    icon={<Pencil className="w-3.5 h-3.5" />}
+                                    label="Rename"
+                                    onClick={() =>
+                                        onBeginRename(conversation)
+                                    }
+                                />
+                                <MenuItem
+                                    icon={
+                                        conversation.is_pinned ? (
+                                            <PinOff className="w-3.5 h-3.5" />
+                                        ) : (
+                                            <Pin className="w-3.5 h-3.5" />
+                                        )
+                                    }
+                                    label={
+                                        conversation.is_pinned ? "Unpin" : "Pin"
+                                    }
+                                    onClick={() => onTogglePin(conversation)}
+                                />
+                                <MenuItem
+                                    icon={<Archive className="w-3.5 h-3.5" />}
+                                    label="Archive"
+                                    onClick={() => onArchive(conversation)}
+                                />
+                                <div className="my-1 h-px bg-[var(--ryta-border)]" />
+                                <MenuItem
+                                    icon={<Trash2 className="w-3.5 h-3.5" />}
+                                    label="Delete"
+                                    danger
+                                    onClick={() =>
+                                        onDeleteRequest(conversation)
+                                    }
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+            </li>
+        );
+    };
 
 const MenuItem: React.FC<{
     icon: React.ReactNode;
@@ -646,11 +765,10 @@ const MenuItem: React.FC<{
     <button
         type="button"
         onClick={onClick}
-        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors ${
-            danger
+        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors ${danger
                 ? "text-[var(--ryta-primary)] hover:bg-[var(--ryta-surface)]"
                 : "text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
-        }`}
+            }`}
     >
         {icon}
         {label}
