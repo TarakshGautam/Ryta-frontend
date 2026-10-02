@@ -6,6 +6,7 @@ import {
     FONT_STACKS,
 } from "@/lib/customization";
 import type { AccentColor, FontFamily, RadiusPreset } from "@/lib/types";
+import { Check } from "lucide-react";
 
 const ACCENT_ORDER: AccentColor[] = [
     "rose",

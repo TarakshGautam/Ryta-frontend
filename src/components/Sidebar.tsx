@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
     Archive,
-    MessageSquare,
     Moon,
     MoreHorizontal,
     PanelLeftClose,
@@ -88,7 +87,6 @@ const Sidebar: React.FC = () => {
     const setPersona = useChatStore((s) => s.setPersona);
     const searchQuery = useChatStore((s) => s.searchQuery);
     const setSearchQuery = useChatStore((s) => s.setSearchQuery);
-    const view = useChatStore((s) => s.view);
     const setView = useChatStore((s) => s.setView);
     const startNewChat = useChatStore((s) => s.startNewChat);
     const updateConversation = useChatStore((s) => s.updateConversation);

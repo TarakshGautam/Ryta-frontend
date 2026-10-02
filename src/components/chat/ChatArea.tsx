@@ -5,7 +5,7 @@ import React, {
     useState,
 } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowDown, MessageCircle, Compass, Sparkles, Heart } from "lucide-react";
 import ChatMessageBubble from "./ChatMessageBubble";
 import ChatComposer from "./ChatComposer";
