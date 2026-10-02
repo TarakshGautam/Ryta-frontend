@@ -70,7 +70,7 @@ const ChatPage: React.FC = () => {
             <Sidebar />
 
             <div className="relative flex h-full min-w-0 flex-1 flex-col">
-                {/* ─── Floating capsule — ONLY when sidebar is closed ─── */}
+                {/* Floating capsule — ONLY when sidebar is closed */}
                 {!sidebarOpen && (
                     <div className="pointer-events-none absolute left-3 top-3 z-20">
                         <div className="pointer-events-auto flex items-center gap-0.5 rounded-2xl border border-[var(--ryta-border)] bg-[var(--ryta-bg)]/85 p-1 backdrop-blur-md shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)]">

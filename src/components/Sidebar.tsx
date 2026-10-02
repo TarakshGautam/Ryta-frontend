@@ -170,7 +170,7 @@ const Sidebar: React.FC = () => {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
-    const userMenuRef = useRef<HTMLDivElement>(null);
+    const userMenuBtnRef = useRef<HTMLButtonElement>(null);
     const renameRef = useRef<HTMLInputElement>(null);
 
     const isDark = resolvedAppearance === "dark";
@@ -192,28 +192,25 @@ const Sidebar: React.FC = () => {
         void load();
     }, [load]);
 
-    // Close user menu on outside click
+    // Close user menu on outside click (excluding portal)
     useEffect(() => {
         if (!userMenuOpen) return;
         const onDown = (e: MouseEvent) => {
-            if (
-                userMenuRef.current &&
-                !userMenuRef.current.contains(e.target as Node)
-            ) {
-                setUserMenuOpen(false);
-            }
+            const t = e.target as HTMLElement;
+            if (t.closest("[data-ryta-user-menu]")) return;
+            if (t.closest("[data-ryta-user-menu-btn]")) return;
+            setUserMenuOpen(false);
         };
         document.addEventListener("mousedown", onDown);
         return () => document.removeEventListener("mousedown", onDown);
     }, [userMenuOpen]);
 
-    // Close chat menu on outside click — separate from the dropdown itself
+    // Close chat menu on outside click (excluding portal)
     useEffect(() => {
         if (!menuFor) return;
         const onDown = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            // If the click is inside a menu (portal), ignore
-            if (target.closest("[data-ryta-chat-menu]")) return;
+            const t = e.target as HTMLElement;
+            if (t.closest("[data-ryta-chat-menu]")) return;
             setMenuFor(null);
         };
         document.addEventListener("mousedown", onDown);
@@ -350,6 +347,24 @@ const Sidebar: React.FC = () => {
         }
     };
 
+    // Compute user menu position
+    const [userMenuPos, setUserMenuPos] = useState<{
+        bottom: number;
+        left: number;
+    } | null>(null);
+
+    useEffect(() => {
+        if (!userMenuOpen || !userMenuBtnRef.current) {
+            setUserMenuPos(null);
+            return;
+        }
+        const rect = userMenuBtnRef.current.getBoundingClientRect();
+        setUserMenuPos({
+            bottom: window.innerHeight - rect.top + 4,
+            left: rect.left,
+        });
+    }, [userMenuOpen]);
+
     if (!sidebarOpen) return null;
 
     const rowProps = {
@@ -379,7 +394,7 @@ const Sidebar: React.FC = () => {
                 aria-hidden="true"
             />
 
-            <aside className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)] overflow-hidden">
+            <aside className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)]">
                 {/* Top brand row */}
                 <div className="flex h-14 shrink-0 items-center justify-between px-3">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -482,11 +497,10 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 {/* Bottom user row */}
-                <div
-                    ref={userMenuRef}
-                    className="relative shrink-0 border-t border-[var(--ryta-border)] p-2.5"
-                >
+                <div className="relative shrink-0 border-t border-[var(--ryta-border)] p-2.5">
                     <button
+                        ref={userMenuBtnRef}
+                        data-ryta-user-menu-btn
                         type="button"
                         onClick={() => setUserMenuOpen((v) => !v)}
                         aria-label="Account menu"
@@ -509,60 +523,72 @@ const Sidebar: React.FC = () => {
                         </span>
                         <MoreHorizontal className="h-4 w-4 shrink-0 text-[var(--ryta-text-subtle)]" />
                     </button>
-
-                    {userMenuOpen && (
-                        <div className="absolute bottom-full left-2 right-2 z-50 mb-1 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)]">
-                            {canInstall && (
-                                <AccountMenuRow
-                                    icon={<Download className="h-3.5 w-3.5" />}
-                                    label="Install app"
-                                    onClick={handleInstallApp}
-                                />
-                            )}
-                            <AccountMenuRow
-                                icon={<User className="h-3.5 w-3.5" />}
-                                label="Account"
-                                onClick={() => {
-                                    setUserMenuOpen(false);
-                                    navigate("/user-profile");
-                                }}
-                            />
-                            <AccountMenuRow
-                                icon={<SettingsIcon className="h-3.5 w-3.5" />}
-                                label="Settings"
-                                onClick={() => {
-                                    setSettingsOpen(true);
-                                    setUserMenuOpen(false);
-                                }}
-                            />
-                            <AccountMenuRow
-                                icon={
-                                    isDark ? (
-                                        <Sun className="h-3.5 w-3.5" />
-                                    ) : (
-                                        <Moon className="h-3.5 w-3.5" />
-                                    )
-                                }
-                                label={isDark ? "Light mode" : "Dark mode"}
-                                onClick={() => {
-                                    toggleTheme();
-                                    setUserMenuOpen(false);
-                                }}
-                            />
-                            <div className="my-1 h-px bg-[var(--ryta-border)]" />
-                            <AccountMenuRow
-                                icon={<LogOut className="h-3.5 w-3.5" />}
-                                label="Log out"
-                                danger
-                                onClick={() => {
-                                    setUserMenuOpen(false);
-                                    void signOut();
-                                }}
-                            />
-                        </div>
-                    )}
                 </div>
             </aside>
+
+            {/* User dropdown — PORTAL */}
+            {userMenuOpen &&
+                userMenuPos &&
+                createPortal(
+                    <div
+                        data-ryta-user-menu
+                        style={{
+                            bottom: userMenuPos.bottom,
+                            left: userMenuPos.left,
+                            width: 240,
+                        }}
+                        className="fixed z-[9999] rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.4)]"
+                    >
+                        {canInstall && (
+                            <AccountMenuRow
+                                icon={<Download className="h-3.5 w-3.5" />}
+                                label="Install app"
+                                onClick={handleInstallApp}
+                            />
+                        )}
+                        <AccountMenuRow
+                            icon={<User className="h-3.5 w-3.5" />}
+                            label="Account"
+                            onClick={() => {
+                                setUserMenuOpen(false);
+                                navigate("/user-profile");
+                            }}
+                        />
+                        <AccountMenuRow
+                            icon={<SettingsIcon className="h-3.5 w-3.5" />}
+                            label="Settings"
+                            onClick={() => {
+                                setSettingsOpen(true);
+                                setUserMenuOpen(false);
+                            }}
+                        />
+                        <AccountMenuRow
+                            icon={
+                                isDark ? (
+                                    <Sun className="h-3.5 w-3.5" />
+                                ) : (
+                                    <Moon className="h-3.5 w-3.5" />
+                                )
+                            }
+                            label={isDark ? "Light mode" : "Dark mode"}
+                            onClick={() => {
+                                toggleTheme();
+                                setUserMenuOpen(false);
+                            }}
+                        />
+                        <div className="my-1 h-px bg-[var(--ryta-border)]" />
+                        <AccountMenuRow
+                            icon={<LogOut className="h-3.5 w-3.5" />}
+                            label="Log out"
+                            danger
+                            onClick={() => {
+                                setUserMenuOpen(false);
+                                void signOut();
+                            }}
+                        />
+                    </div>,
+                    document.body
+                )}
 
             {/* Settings modal */}
             {settingsOpen && (
@@ -583,7 +609,7 @@ const Sidebar: React.FC = () => {
             {/* Confirm delete */}
             {deleting && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="delete-title"
@@ -694,22 +720,35 @@ const ChatRow: React.FC<
         const isMenuOpen = conversation.id === menuFor;
 
         const btnRef = useRef<HTMLButtonElement>(null);
-        const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
-            null
-        );
+        const [menuPos, setMenuPos] = useState<{
+            top: number;
+            left: number;
+        } | null>(null);
 
-        // When menu opens, compute fixed position from button rect
+        // Recompute menu position when opened
         useEffect(() => {
             if (!isMenuOpen || !btnRef.current) {
                 setMenuPos(null);
                 return;
             }
             const rect = btnRef.current.getBoundingClientRect();
-            // Place menu right-aligned below button
-            setMenuPos({
-                top: rect.bottom + 4,
-                left: rect.right - 176, // menu width ~176px
-            });
+            const menuWidth = 176;
+            const menuHeight = 200; // approx
+
+            let top = rect.bottom + 4;
+            let left = rect.right - menuWidth;
+
+            // Clamp to viewport
+            if (left < 8) left = 8;
+            if (left + menuWidth > window.innerWidth - 8) {
+                left = window.innerWidth - menuWidth - 8;
+            }
+            // If not enough room below, open above
+            if (top + menuHeight > window.innerHeight - 8) {
+                top = rect.top - menuHeight - 4;
+            }
+
+            setMenuPos({ top, left });
         }, [isMenuOpen]);
 
         return (
@@ -771,14 +810,14 @@ const ChatRow: React.FC<
                     </div>
                 )}
 
-                {/* Portal dropdown — escapes overflow clipping */}
+                {/* Portal dropdown */}
                 {isMenuOpen &&
                     menuPos &&
                     createPortal(
                         <div
                             data-ryta-chat-menu
                             style={{ top: menuPos.top, left: menuPos.left }}
-                            className="fixed z-[100] w-44 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.35)]"
+                            className="fixed z-[9999] w-44 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.4)]"
                         >
                             <AccountMenuRow
                                 icon={<Pencil className="h-3.5 w-3.5" />}
