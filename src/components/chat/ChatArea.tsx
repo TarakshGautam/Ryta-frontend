@@ -5,7 +5,8 @@ import React, {
     useState,
 } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { ArrowDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowDown, MessageCircle, Compass, Sparkles, Heart } from "lucide-react";
 import ChatMessageBubble from "./ChatMessageBubble";
 import ChatComposer from "./ChatComposer";
 import { sendMessage } from "@/services/chatApi";
@@ -19,16 +20,46 @@ interface ChatAreaProps {
     onConversationCreated?: (conversationId: string) => void;
 }
 
-const SUGGESTIONS: Record<string, string[]> = {
+interface SuggestionItem {
+    text: string;
+    subtitle: string;
+    icon: React.ReactNode;
+}
+
+const SUGGESTIONS: Record<string, SuggestionItem[]> = {
     ryku: [
-        "Aaj mood kharab tha, bolu?",
-        "Meri favourite films yaad kar",
-        "Thoda time nikal ke baat karni hai",
+        {
+            text: "Aaj mood kharab tha, bolu?",
+            subtitle: "Kuch share karna hai? Main sun rahi hoon.",
+            icon: <Heart className="w-4 h-4" />,
+        },
+        {
+            text: "Meri favourite films yaad kar",
+            subtitle: "Baat karte hain uske baare mein",
+            icon: <Sparkles className="w-4 h-4" />,
+        },
+        {
+            text: "Thoda time nikal ke baat karni hai",
+            subtitle: "Main yahan hoon, jab bhi chaho",
+            icon: <MessageCircle className="w-4 h-4" />,
+        },
     ],
     takshu: [
-        "Scene kya hai, bata",
-        "Career ke baare mein sochna hai",
-        "Kuch bhi bol, main hu na",
+        {
+            text: "Scene kya hai, bata",
+            subtitle: "Kuch bhi share karo, main hu na",
+            icon: <MessageCircle className="w-4 h-4" />,
+        },
+        {
+            text: "Career ke baare mein sochna hai",
+            subtitle: "Baat karte hain iske baare mein",
+            icon: <Compass className="w-4 h-4" />,
+        },
+        {
+            text: "Kuch bhi bol, main hu na",
+            subtitle: "Main yahan hoon, sun raha hoon",
+            icon: <Sparkles className="w-4 h-4" />,
+        },
     ],
 };
 
@@ -60,17 +91,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
     const sendingRef = useRef(false);
     const [atBottom, setAtBottom] = useState(true);
 
-    // ─────────────────────────────────────────────────────────────
-    // Scroll helpers
-    // ─────────────────────────────────────────────────────────────
     const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
         const el = scrollRef.current;
         if (!el) return;
         el.scrollTo({ top: el.scrollHeight, behavior });
     }, []);
 
-    // Double rAF — ensures layout + paint complete before we measure scrollHeight.
-    // This is what makes chat-switch scroll 100% reliable across short + long chats.
     const scrollToBottomAfterPaint = useCallback(
         (behavior: ScrollBehavior = "auto") => {
             requestAnimationFrame(() => {
@@ -89,16 +115,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         setAtBottom(distance < 120);
     }, []);
 
-    // ─────────────────────────────────────────────────────────────
-    // Load history — single source of truth for chat switching
-    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
         let cancelled = false;
 
         const load = async () => {
             if (!activeChatId || !userId) {
                 setMessages([]);
-                // New empty chat — pin to bottom
                 scrollToBottomAfterPaint("auto");
                 return;
             }
@@ -124,11 +146,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
 
                 setMessages(loaded);
                 setAtBottom(true);
-
-                // Scroll AFTER paint — guaranteed, regardless of chat length.
                 scrollToBottomAfterPaint("auto");
 
-                // Derive persona + theme from thread owner
                 const owner = loaded[0]?.persona;
                 if (owner && owner !== persona) {
                     useChatStore.getState().setPersona(owner);
@@ -155,9 +174,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeChatId, userId]);
 
-    // ─────────────────────────────────────────────────────────────
-    // Smooth scroll when a NEW message is appended (not on load)
-    // ─────────────────────────────────────────────────────────────
     const prevMessagesLengthRef = useRef<number>(0);
 
     useEffect(() => {
@@ -167,21 +183,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         const current = messages.length;
         prevMessagesLengthRef.current = current;
 
-        // Only scroll if a new message was appended to an existing thread.
-        // `prev > 0` skips the 0 → N jump that happens on chat load.
         if (current > prev && prev > 0) {
             scrollToBottom("smooth");
         }
     }, [messages.length, messagesLoading, scrollToBottom]);
 
-    // ─────────────────────────────────────────────────────────────
-    // Smooth scroll when sending starts (so user sees their message)
-    // ─────────────────────────────────────────────────────────────
     useEffect(() => {
         if (isSending) scrollToBottom("smooth");
     }, [isSending, scrollToBottom]);
 
-    // ── Send ──
     const deliver = useCallback(
         async (
             text: string,
@@ -216,6 +226,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     setActiveChatId(result.conversationId);
                     upsertConversation({
                         id: result.conversationId,
+                        // Temporary title — backend will generate a
+                        // proper AI title shortly after.
                         title: text.slice(0, 48),
                         persona,
                         updated_at: new Date().toISOString(),
@@ -262,7 +274,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         ]
     );
 
-    // ── Regenerate ──
     const handleRegenerate = useCallback(
         (messageId: string) => {
             const index = messages.findIndex((m) => m.id === messageId);
@@ -285,7 +296,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         [messages, setMessages, deliver, webSearchEnabled]
     );
 
-    // ── Feedback (local only) ──
     const handleFeedback = useCallback(
         (messageId: string, feedback: "liked" | "disliked" | null) => {
             setMessages(
@@ -301,7 +311,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
 
     return (
         <div className="flex flex-col h-full min-h-0">
-            {/* ── Stream ── */}
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
@@ -338,14 +347,13 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                 </div>
             </div>
 
-            {/* Jump to newest */}
             {!atBottom && messages.length > 0 && (
                 <div className="relative flex justify-center">
                     <button
                         type="button"
                         onClick={() => scrollToBottom("smooth")}
                         aria-label="Jump to newest message"
-                        className="absolute -top-10 p-1.5 rounded-lg border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] transition-colors"
+                        className="absolute -top-10 p-2 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] transition-all hover:scale-105 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.15)]"
                     >
                         <ArrowDown className="w-3.5 h-3.5" />
                     </button>
@@ -375,32 +383,63 @@ const EmptyState: React.FC<{
     onPick: (text: string) => void;
 }> = ({ persona, onPick }) => {
     const meta = PERSONAS[persona];
+    const suggestions = SUGGESTIONS[persona] ?? [];
 
     return (
-        <div className="py-12 sm:py-16">
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="py-12 sm:py-16 flex flex-col items-center text-center"
+        >
+            <img
+                src={meta.avatar}
+                alt=""
+                className="w-12 h-12 rounded-2xl object-cover mb-4 shadow-[0_0_40px_-8px_var(--ryta-glow)]"
+            />
+
             <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--ryta-text-subtle)]">
                 {meta.name}
             </p>
-            <h2 className="mt-3 font-serif text-2xl sm:text-[28px] leading-snug font-semibold text-[var(--ryta-text)] max-w-lg">
+
+            <h2 className="mt-3 font-serif text-[26px] sm:text-[32px] leading-snug text-[var(--ryta-text)] max-w-lg">
                 {meta.greeting}
             </h2>
-            <p className="mt-2 text-[13.5px] text-[var(--ryta-text-muted)] max-w-md leading-relaxed">
+
+            <p className="mt-3 text-[13.5px] text-[var(--ryta-text-muted)] max-w-md leading-relaxed">
                 {meta.description}
             </p>
 
-            <div className="mt-6 space-y-0 border-l border-[var(--ryta-border)] max-w-md">
-                {(SUGGESTIONS[persona] ?? []).map((s) => (
-                    <button
-                        key={s}
+            <div className="mt-8 w-full max-w-md space-y-2">
+                {suggestions.map((s, i) => (
+                    <motion.button
+                        key={s.text}
                         type="button"
-                        onClick={() => onPick(s)}
-                        className="block w-full text-left px-3 py-2 text-[13.5px] text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] border-b border-[var(--ryta-border)] transition-colors"
+                        onClick={() => onPick(s.text)}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                            duration: 0.25,
+                            delay: 0.1 + i * 0.05,
+                            ease: "easeOut",
+                        }}
+                        className="group flex w-full items-start gap-3 rounded-2xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)]/50 px-4 py-3 text-left transition-all duration-200 hover:border-[var(--ryta-primary)]/40 hover:bg-[var(--ryta-surface)] hover:shadow-[0_4px_20px_-8px_var(--ryta-glow)]"
                     >
-                        {s}
-                    </button>
+                        <span className="mt-0.5 shrink-0 text-[var(--ryta-text-subtle)] group-hover:text-[var(--ryta-primary)] transition-colors">
+                            {s.icon}
+                        </span>
+                        <span className="flex-1 min-w-0">
+                            <span className="block text-[13.5px] font-medium text-[var(--ryta-text)]">
+                                {s.text}
+                            </span>
+                            <span className="block mt-0.5 text-[12px] text-[var(--ryta-text-muted)]">
+                                {s.subtitle}
+                            </span>
+                        </span>
+                    </motion.button>
                 ))}
             </div>
-        </div>
+        </motion.div>
     );
 };
 
@@ -413,7 +452,7 @@ const Thinking: React.FC = () => (
             <span
                 key={delay}
                 style={{ animationDelay: `${delay}ms` }}
-                className="w-1 h-1 rounded-full bg-[var(--ryta-text-subtle)] animate-pulse"
+                className="w-1.5 h-1.5 rounded-full bg-[var(--ryta-primary)]/60 animate-pulse"
             />
         ))}
     </div>

@@ -9,13 +9,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Globe, Mic, MicOff } from "lucide-react";
 import type { Attachment, Persona } from "@/types/chat";
 import { PERSONA_ORDER, PERSONAS } from "@/types/chat";
-import FileUploadButton from "./FileUploadButton";
-
-interface PickedFile {
-    url: string;
-    name: string;
-    type: string;
-}
 
 interface ChatComposerProps {
     persona: Persona;
@@ -67,7 +60,6 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
     const [value, setValue] = useState("");
     const [listening, setListening] = useState(false);
     const [micSupported, setMicSupported] = useState(true);
-    const [attachment, setAttachment] = useState<PickedFile | null>(null);
     const [focused, setFocused] = useState(false);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -123,31 +115,18 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
         recognitionRef.current.start();
     };
 
-    const canSend =
-        (value.trim().length > 0 || attachment !== null) && !isLoading;
+    const canSend = value.trim().length > 0 && !isLoading;
 
     const submit = useCallback(() => {
         const text = value.trim();
-        if (!text && !attachment) return;
+        if (!text) return;
         if (isLoading) return;
         if (listening) stopListening();
 
-        const attachments: Attachment[] = attachment
-            ? [
-                {
-                    url: attachment.url,
-                    type: attachment.type.startsWith("image/")
-                        ? "image"
-                        : "file",
-                },
-            ]
-            : [];
-
-        onSend(text || "What do you make of this?", attachments);
+        onSend(text, []);
         setValue("");
-        setAttachment(null);
         textareaRef.current?.focus();
-    }, [value, attachment, isLoading, listening, stopListening, onSend]);
+    }, [value, isLoading, listening, stopListening, onSend]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key !== "Enter") return;
@@ -238,13 +217,6 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
                         </div>
 
                         <div className="flex-1" />
-
-                        {/* File upload */}
-                        <FileUploadButton
-                            currentFile={attachment}
-                            onUpload={setAttachment}
-                            onRemove={() => setAttachment(null)}
-                        />
 
                         {/* Web search */}
                         <button

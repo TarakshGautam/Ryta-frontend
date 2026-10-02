@@ -1,33 +1,68 @@
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // RyTa.AI — Core Types
-// Single source of truth for themes & personas.
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
 
 // ─── Appearance ───
 export type Appearance = "system" | "light" | "dark";
 export type ResolvedAppearance = "light" | "dark";
 
-// ─── Themes ───
-// Each persona owns a palette. Only two themes exist.
-export type ThemeName = "sweetheart" | "protector";
+// ─── Themes (legacy) ───
+export type ThemeName = "sweetheart" | "protector" | "neutral";
 
 // ─── Persona ───
 export type Persona = "ryku" | "takshu";
 
-// ─── Persona → palette mapping ───
-// Switching souls retints the entire app.
+// ─── Persona → theme mapping ───
 export const PERSONA_THEME: Record<Persona, ThemeName> = {
     ryku: "sweetheart",
     takshu: "protector",
+};
+
+// ─── Customization ───
+export type AccentColor =
+    | "rose"
+    | "pink"
+    | "purple"
+    | "blue"
+    | "teal"
+    | "emerald"
+    | "amber"
+    | "orange"
+    | "red"
+    | "slate";
+
+export type FontFamily =
+    | "quicksand"
+    | "inter"
+    | "geist"
+    | "system"
+    | "serif";
+
+export type RadiusPreset = "sharp" | "default" | "round";
+
+export interface Customization {
+    accent: AccentColor;
+    fontFamily: FontFamily;
+    fontScale: number;
+    radius: RadiusPreset;
+}
+
+export const DEFAULT_CUSTOMIZATION: Customization = {
+    accent: "slate",
+    fontFamily: "system",
+    fontScale: 1,
+    radius: "default",
 };
 
 // ─── UI Preferences ───
 export interface AppSettings {
     appearance: Appearance;
     persona: Persona;
+    customization: Customization;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
     appearance: "light",
     persona: "ryku",
+    customization: DEFAULT_CUSTOMIZATION,
 };

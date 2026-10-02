@@ -70,7 +70,8 @@ body,
    BODY
    ───────────────────────────────────────────── */
 body {
-  font-family: 'Quicksand', system-ui, -apple-system, sans-serif;
+  font-family: var(--ryta-font-body, 'Quicksand'), system-ui, -apple-system, sans-serif;
+  font-size: calc(15px * var(--ryta-font-scale, 1));
   font-feature-settings: 'ss01', 'ss02';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

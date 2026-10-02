@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { AppSettings, Appearance, Persona } from "../lib/types";
 import { PERSONA_THEME } from "../lib/types";
+import CustomizationPanel from "./CustomizationPanel";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -194,6 +195,13 @@ export default function Settings({
                                     />
                                 </Row>
                                 <Divider />
+                                {/* Customization */}
+                                <div>
+                                    <div className="mb-3 text-[13.5px] font-medium text-[var(--ryta-text)]">
+                                        Customize
+                                    </div>
+                                    <CustomizationPanel />
+                                </div>
                                 <div>
                                     <div className="mb-3 text-[13.5px] font-medium text-[var(--ryta-text)]">
                                         Theme

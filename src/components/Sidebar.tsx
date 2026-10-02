@@ -108,7 +108,6 @@ const Sidebar: React.FC = () => {
 
     const isDark = resolvedAppearance === "dark";
 
-    // ── Load threads ──
     const load = useCallback(async () => {
         if (!userId) return;
         setLoading(true);
@@ -126,7 +125,6 @@ const Sidebar: React.FC = () => {
         void load();
     }, [load]);
 
-    // Close menu on outside click
     useEffect(() => {
         if (!menuFor) return;
         const onDown = (e: MouseEvent) => {
@@ -148,7 +146,6 @@ const Sidebar: React.FC = () => {
         }
     }, [renaming]);
 
-    // ── Filter + group ──
     const { pinned, groups, total } = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
         const matching = conversations.filter((c) =>
@@ -171,7 +168,6 @@ const Sidebar: React.FC = () => {
         return { pinned: isPinned, groups: buckets, total: matching.length };
     }, [conversations, searchQuery]);
 
-    // ── Handlers ──
     const closeOnMobile = () => {
         if (window.innerWidth < 1024) toggleSidebar();
     };
@@ -281,19 +277,6 @@ const Sidebar: React.FC = () => {
         onDeleteRequest: setDeleting,
     };
 
-    const nav: {
-        id: "chat";
-        label: string;
-        icon: React.ReactNode;
-    }[] = [
-            {
-                id: "chat",
-                label: "Chat",
-                icon: <MessageSquare className="w-[15px] h-[15px]" />,
-            },
-        ];
-
-    // ── Width ──
     const width = collapsed ? 60 : 260;
 
     return (
@@ -310,17 +293,17 @@ const Sidebar: React.FC = () => {
                 className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)] transition-[width] duration-200 ease-out overflow-hidden"
             >
                 {/* ── Brand row ── */}
-                <div className="flex h-12 shrink-0 items-center justify-between px-3">
+                <div className="flex h-14 shrink-0 items-center justify-between px-3">
                     {!collapsed ? (
                         <>
-                            <div className="flex min-w-0 items-center gap-2">
+                            <div className="flex min-w-0 items-center gap-2.5">
                                 <img
                                     src="/logo.png"
                                     alt=""
-                                    className="h-6 w-6 rounded-md object-contain"
+                                    className="h-7 w-7 rounded-lg object-contain"
                                 />
-                                <span className="truncate font-serif text-[15px] font-semibold tracking-tight text-[var(--ryta-text)]">
-                                    RyTa.AI
+                                <span className="truncate font-serif text-[17px] tracking-tight text-[var(--ryta-text)]">
+                                    Ryta
                                 </span>
                             </div>
                             <button
@@ -328,7 +311,7 @@ const Sidebar: React.FC = () => {
                                 onClick={toggleCollapsed}
                                 title="Collapse sidebar"
                                 aria-label="Collapse sidebar"
-                                className="p-1.5 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors"
+                                className="p-1.5 rounded-lg text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors"
                             >
                                 <PanelLeftClose className="w-4 h-4" />
                             </button>
@@ -339,7 +322,7 @@ const Sidebar: React.FC = () => {
                             onClick={toggleCollapsed}
                             title="Expand sidebar"
                             aria-label="Expand sidebar"
-                            className="mx-auto p-1.5 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors"
+                            className="mx-auto p-1.5 rounded-lg text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors"
                         >
                             <PanelLeftOpen className="w-4 h-4" />
                         </button>
@@ -347,60 +330,28 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 {/* ── New chat ── */}
-                <div className="px-2 pb-1">
+                <div className="px-2 pb-1.5">
                     <button
                         type="button"
                         onClick={handleNewChat}
                         title="New chat"
-                        className={`flex h-9 items-center gap-2 rounded-lg text-[13px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface)] ${collapsed
-                            ? "w-9 mx-auto justify-center"
-                            : "w-full px-2.5"
+                        className={`flex h-10 items-center gap-2.5 rounded-xl text-[13.5px] font-medium transition-all duration-150
+                            ${collapsed
+                                ? "w-10 mx-auto justify-center bg-[var(--ryta-surface)]"
+                                : "w-full px-3 bg-[var(--ryta-primary)] text-[var(--ryta-primary-fg)] hover:bg-[var(--ryta-primary-hover)] shadow-[0_2px_12px_-4px_var(--ryta-glow)]"
                             }`}
                     >
-                        <Plus className="w-4 h-4 text-[var(--ryta-text-muted)] shrink-0" />
+                        <Plus className="w-4 h-4 shrink-0" />
                         {!collapsed && <span>New chat</span>}
                     </button>
                 </div>
 
-                {/* ── Nav ── */}
-                <nav className="px-1.5 pb-1">
-                    {nav.map((item) => {
-                        const active = view === item.id;
-                        return (
-                            <button
-                                key={item.id}
-                                type="button"
-                                onClick={() => {
-                                    setView(item.id);
-                                    closeOnMobile();
-                                }}
-                                title={collapsed ? item.label : undefined}
-                                aria-current={active ? "page" : undefined}
-                                className={`flex items-center gap-2.5 rounded-lg text-[13px] transition-colors ${collapsed
-                                    ? "w-9 mx-auto justify-center py-2"
-                                    : "w-full px-2.5 py-2"
-                                    } ${active
-                                        ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
-                                        : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
-                                    }`}
-                            >
-                                <span className="shrink-0">{item.icon}</span>
-                                {!collapsed && (
-                                    <span className="truncate">
-                                        {item.label}
-                                    </span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </nav>
-
-                {/* ── Search (expanded only) ── */}
+                {/* ── Search ── */}
                 {!collapsed && (
-                    <div className="px-2.5 py-2">
+                    <div className="px-2.5 py-1.5">
                         <div className="relative">
                             <Search
-                                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ryta-text-subtle)]"
+                                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ryta-text-subtle)]"
                                 aria-hidden="true"
                             />
                             <input
@@ -411,7 +362,7 @@ const Sidebar: React.FC = () => {
                                 }
                                 placeholder="Search chats"
                                 aria-label="Search chats"
-                                className="h-8 w-full rounded-lg border border-transparent bg-transparent pl-8 pr-7 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:border-[var(--ryta-border)] focus:border-[var(--ryta-border-strong)] focus:bg-[var(--ryta-surface)]"
+                                className="h-9 w-full rounded-xl border border-transparent bg-[var(--ryta-surface)]/50 pl-9 pr-8 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:bg-[var(--ryta-surface)] focus:border-[var(--ryta-border-strong)] focus:bg-[var(--ryta-surface)]"
                             />
                             {searchQuery && (
                                 <button
@@ -419,7 +370,7 @@ const Sidebar: React.FC = () => {
                                     onClick={() => setSearchQuery("")}
                                     title="Clear search"
                                     aria-label="Clear search"
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--ryta-text-subtle)] hover:text-[var(--ryta-text)]"
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[var(--ryta-text-subtle)] hover:text-[var(--ryta-text)]"
                                 >
                                     <X className="w-3 h-3" />
                                 </button>
@@ -428,17 +379,15 @@ const Sidebar: React.FC = () => {
                     </div>
                 )}
 
-                <div className="mx-2.5 h-px shrink-0 bg-[var(--ryta-border)]" />
-
-                {/* ── Threads (expanded only) ── */}
+                {/* ── Threads ── */}
                 {!collapsed && (
-                    <div className="ryta-scroll flex-1 overflow-y-auto px-1.5 py-2">
+                    <div className="ryta-scroll flex-1 overflow-y-auto px-2 py-1.5">
                         {loading && conversations.length === 0 ? (
-                            <p className="px-2.5 py-6 text-center text-[11px] text-[var(--ryta-text-subtle)]">
+                            <p className="px-3 py-6 text-center text-[11.5px] text-[var(--ryta-text-subtle)]">
                                 Loading…
                             </p>
                         ) : total === 0 ? (
-                            <p className="px-2.5 py-6 text-center text-[11px] leading-relaxed text-[var(--ryta-text-subtle)]">
+                            <p className="px-3 py-6 text-center text-[11.5px] leading-relaxed text-[var(--ryta-text-subtle)]">
                                 {searchQuery
                                     ? "Nothing matches that."
                                     : "No conversations yet."}
@@ -468,30 +417,23 @@ const Sidebar: React.FC = () => {
                     </div>
                 )}
 
-                {/* Spacer for collapsed mode */}
                 {collapsed && <div className="flex-1" />}
 
-                {/* ── Bottom bar: theme + settings + account ── */}
+                {/* ── Bottom bar ── */}
                 <div className="shrink-0 border-t border-[var(--ryta-border)] p-2">
-                    {/* Theme + Settings */}
                     <div
-                        className={`flex items-center ${collapsed ? "flex-col gap-1" : "gap-1"
-                            }`}
+                        className={`flex items-center ${collapsed ? "flex-col gap-1" : "gap-1"}`}
                     >
                         <button
                             type="button"
                             onClick={toggleTheme}
                             title={
-                                isDark
-                                    ? "Switch to light"
-                                    : "Switch to dark"
+                                isDark ? "Switch to light" : "Switch to dark"
                             }
                             aria-label={
-                                isDark
-                                    ? "Switch to light"
-                                    : "Switch to dark"
+                                isDark ? "Switch to light" : "Switch to dark"
                             }
-                            className={`p-2 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
+                            className={`p-2 rounded-lg text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
                                 ? "w-9 justify-center"
                                 : "flex-1 justify-center"
                                 }`}
@@ -508,7 +450,7 @@ const Sidebar: React.FC = () => {
                             onClick={() => setSettingsOpen(true)}
                             title="Settings"
                             aria-label="Settings"
-                            className={`p-2 rounded-md text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
+                            className={`p-2 rounded-lg text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
                                 ? "w-9 justify-center"
                                 : "flex-1 justify-center"
                                 }`}
@@ -517,9 +459,8 @@ const Sidebar: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Account */}
                     <div
-                        className={`mt-2 flex items-center ${collapsed ? "justify-center" : "gap-2.5"
+                        className={`mt-2 flex items-center ${collapsed ? "justify-center" : "gap-2.5 px-1.5 py-1"
                             }`}
                     >
                         <UserButton />
@@ -538,7 +479,7 @@ const Sidebar: React.FC = () => {
                 </div>
             </aside>
 
-            {/* ── Settings modal ── */}
+            {/* Settings modal */}
             {settingsOpen && (
                 <Settings
                     settings={settings}
@@ -554,18 +495,18 @@ const Sidebar: React.FC = () => {
                 />
             )}
 
-            {/* ── Confirm delete ── */}
+            {/* Confirm delete */}
             {deleting && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="delete-title"
                 >
-                    <div className="w-full max-w-sm rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-5">
+                    <div className="w-full max-w-sm rounded-2xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.4)]">
                         <h2
                             id="delete-title"
-                            className="font-serif text-base font-semibold text-[var(--ryta-text)]"
+                            className="font-serif text-lg font-semibold text-[var(--ryta-text)]"
                         >
                             Let it go?
                         </h2>
@@ -578,7 +519,7 @@ const Sidebar: React.FC = () => {
                                 type="button"
                                 onClick={() => setDeleting(null)}
                                 disabled={busy}
-                                className="rounded-lg border border-[var(--ryta-border)] px-3 py-1.5 text-[12.5px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface)]"
+                                className="rounded-lg border border-[var(--ryta-border)] px-3.5 py-1.5 text-[12.5px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface)]"
                             >
                                 Keep it
                             </button>
@@ -586,7 +527,7 @@ const Sidebar: React.FC = () => {
                                 type="button"
                                 onClick={confirmDelete}
                                 disabled={busy}
-                                className="rounded-lg bg-[var(--ryta-primary)] px-3 py-1.5 text-[12.5px] font-medium text-[var(--ryta-primary-fg)] transition-opacity hover:opacity-90 disabled:opacity-60"
+                                className="rounded-lg bg-[var(--ryta-primary)] px-3.5 py-1.5 text-[12.5px] font-medium text-[var(--ryta-primary-fg)] transition-all hover:bg-[var(--ryta-primary-hover)] disabled:opacity-60 shadow-[0_2px_12px_-4px_var(--ryta-glow)]"
                             >
                                 {busy ? "Going…" : "Delete"}
                             </button>
@@ -627,7 +568,7 @@ const ChatGroup: React.FC<
     RowProps
 > = ({ label, chats, isPinned = false, ...row }) => (
     <div className="mb-3">
-        <h3 className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--ryta-text-subtle)]">
+        <h3 className="px-3 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--ryta-text-subtle)]">
             {isPinned && (
                 <span
                     className="mr-1 text-[var(--ryta-primary)]"
@@ -638,7 +579,7 @@ const ChatGroup: React.FC<
             )}
             {label}
         </h3>
-        <ul className="space-y-px">
+        <ul className="space-y-0.5">
             {chats.map((c) => (
                 <ChatRow key={c.id} conversation={c} {...row} />
             ))}
@@ -690,15 +631,15 @@ const ChatRow: React.FC<
                             }
                         }}
                         aria-label="Rename conversation"
-                        className="w-full rounded-md border border-[var(--ryta-border-strong)] bg-[var(--ryta-surface-raised)] px-2 py-1.5 text-[12.5px] text-[var(--ryta-text)] outline-none"
+                        className="w-full rounded-lg border border-[var(--ryta-primary)]/50 bg-[var(--ryta-surface-raised)] px-3 py-2 text-[12.5px] text-[var(--ryta-text)] outline-none shadow-[0_0_0_3px_var(--ryta-glow)]"
                     />
                 ) : (
                     <button
                         type="button"
                         onClick={() => onOpen(conversation)}
                         aria-current={isActive ? "true" : undefined}
-                        className={`flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-[12.5px] transition-colors ${isActive
-                            ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
+                        className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] transition-all duration-150 ${isActive
+                            ? "bg-[var(--ryta-primary)]/10 font-medium text-[var(--ryta-text)]"
                             : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
                             }`}
                     >
@@ -708,7 +649,7 @@ const ChatRow: React.FC<
 
                 {!isRenaming && (
                     <div
-                        className={`absolute right-1 top-1/2 -translate-y-1/2 transition-opacity ${isMenuOpen
+                        className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-opacity ${isMenuOpen
                             ? "opacity-100"
                             : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                             }`}
@@ -721,7 +662,7 @@ const ChatRow: React.FC<
                             title="More"
                             aria-label={`Options for ${conversation.title}`}
                             aria-expanded={isMenuOpen}
-                            className="rounded-md p-1 text-[var(--ryta-text-subtle)] transition-colors hover:bg-[var(--ryta-surface-raised)] hover:text-[var(--ryta-text)]"
+                            className="rounded-lg p-1 text-[var(--ryta-text-subtle)] transition-colors hover:bg-[var(--ryta-surface-raised)] hover:text-[var(--ryta-text)]"
                         >
                             <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
@@ -729,7 +670,7 @@ const ChatRow: React.FC<
                         {isMenuOpen && (
                             <div
                                 ref={menuRef}
-                                className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1"
+                                className="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)]"
                             >
                                 <MenuItem
                                     icon={<Pencil className="w-3.5 h-3.5" />}
@@ -782,7 +723,7 @@ const MenuItem: React.FC<{
     <button
         type="button"
         onClick={onClick}
-        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors ${danger
+        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] transition-colors ${danger
             ? "text-[var(--ryta-primary)] hover:bg-[var(--ryta-surface)]"
             : "text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
             }`}
