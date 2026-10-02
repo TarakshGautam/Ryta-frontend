@@ -68,7 +68,7 @@ interface ChatState {
 }
 
 const isDesktop = () =>
-    typeof window !== "undefined" ? window.innerWidth >= 1024 : true;
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : false;
 
 export const useChatStore = create<ChatState>((set) => ({
     messages: [],
@@ -78,7 +78,7 @@ export const useChatStore = create<ChatState>((set) => ({
     persona: DEFAULT_PERSONA,
 
     sidebarOpen: isDesktop(),
-    collapsed: false,
+    collapsed: true,
     searchQuery: "",
     isSending: false,
     webSearchEnabled: false,
