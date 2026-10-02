@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   BrowserRouter as Router,
   Routes,
@@ -275,40 +277,59 @@ const InstallBanner: React.FC<{
 // ─────────────────────────────────────────────────────────────
 // USER PROFILE PAGE (Clerk)
 // ─────────────────────────────────────────────────────────────
-const UserProfilePage: React.FC = () => (
-  <div className="min-h-screen w-full bg-[var(--ryta-bg)] flex justify-center py-8 px-4">
-    <div className="w-full max-w-[880px]">
-      <UserProfile
-        routing="path"
-        path="/user-profile"
-        appearance={{
-          variables: {
-            colorPrimary: "var(--ryta-primary)",
-            colorBackground: "var(--ryta-bg)",
-            colorText: "var(--ryta-text)",
-            colorTextSecondary: "var(--ryta-text-muted)",
-            colorInputBackground: "var(--ryta-surface)",
-            colorInputText: "var(--ryta-text)",
-            borderRadius: "0.75rem",
-            fontFamily: "inherit",
-          },
-          elements: {
-            rootBox: "w-full",
-            card: "w-full shadow-none border border-[var(--ryta-border)] bg-[var(--ryta-bg)]",
-            navbar: "hidden",
-            navbarMobileMenuButton: "hidden",
-            headerTitle: "font-serif text-[var(--ryta-text)]",
-            headerSubtitle: "text-[var(--ryta-text-muted)]",
-            profileSectionTitleText: "text-[var(--ryta-text)]",
-            profileSectionContent: "text-[var(--ryta-text)]",
-            formButtonPrimary:
-              "bg-[var(--ryta-primary)] hover:bg-[var(--ryta-primary-hover)] text-[var(--ryta-primary-fg)]",
-          },
-        }}
-      />
+const UserProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen w-full bg-[var(--ryta-bg)] py-8 px-4">
+      {/* Back button */}
+      <div className="mx-auto mb-4 w-full max-w-[880px]">
+        <button
+          type="button"
+          onClick={() => navigate("/chat")}
+          className="inline-flex items-center gap-2 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)] px-3 py-2 text-[13px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface-raised)]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to chat
+        </button>
+      </div>
+
+      <div className="mx-auto flex w-full max-w-[880px] justify-center">
+        <UserProfile
+          routing="hash"
+          appearance={{
+            variables: {
+              colorPrimary: "var(--ryta-primary)",
+              colorBackground: "var(--ryta-bg)",
+              colorText: "var(--ryta-text)",
+              colorTextSecondary: "var(--ryta-text-muted)",
+              colorInputBackground: "var(--ryta-surface)",
+              colorInputText: "var(--ryta-text)",
+              borderRadius: "0.75rem",
+              fontFamily: "inherit",
+            },
+            elements: {
+              rootBox: "w-full",
+              card: "w-full shadow-none border border-[var(--ryta-border)] bg-[var(--ryta-bg)]",
+              navbar: "hidden",
+              navbarMobileMenuButton: "hidden",
+              headerTitle:
+                "font-serif text-[var(--ryta-text)]",
+              headerSubtitle:
+                "text-[var(--ryta-text-muted)]",
+              profileSectionTitleText:
+                "text-[var(--ryta-text)]",
+              profileSectionContent:
+                "text-[var(--ryta-text)]",
+              formButtonPrimary:
+                "bg-[var(--ryta-primary)] hover:bg-[var(--ryta-primary-hover)] text-[var(--ryta-primary-fg)]",
+            },
+          }}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // MAIN APP

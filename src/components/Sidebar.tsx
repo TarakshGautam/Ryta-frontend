@@ -5,6 +5,7 @@ import React, {
     useRef,
     useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
     Archive,
@@ -13,7 +14,6 @@ import {
     Moon,
     MoreHorizontal,
     PanelLeftClose,
-    PanelLeftOpen,
     Pencil,
     Pin,
     PinOff,
@@ -75,9 +75,7 @@ const groupFor = (iso?: string): DateGroup => {
     return "Older";
 };
 
-// ─────────────────────────────────────────────────────────────
-// PWA install hook — used inside this file
-// ─────────────────────────────────────────────────────────────
+// ─── PWA install hook ───
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
     userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -133,9 +131,9 @@ function usePWAInstall() {
     };
 }
 
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // Sidebar
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
 const Sidebar: React.FC = () => {
     const { user } = useUser();
     const { signOut } = useClerk();
@@ -147,8 +145,6 @@ const Sidebar: React.FC = () => {
 
     const sidebarOpen = useChatStore((s) => s.sidebarOpen);
     const toggleSidebar = useChatStore((s) => s.toggleSidebar);
-    const collapsed = useChatStore((s) => s.collapsed);
-    const toggleCollapsed = useChatStore((s) => s.toggleCollapsed);
 
     const conversations = useChatStore((s) => s.conversations);
     const setConversations = useChatStore((s) => s.setConversations);
@@ -174,7 +170,6 @@ const Sidebar: React.FC = () => {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
-    const menuRef = useRef<HTMLDivElement>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const renameRef = useRef<HTMLInputElement>(null);
 
@@ -197,15 +192,10 @@ const Sidebar: React.FC = () => {
         void load();
     }, [load]);
 
+    // Close user menu on outside click
     useEffect(() => {
-        if (!menuFor && !userMenuOpen) return;
+        if (!userMenuOpen) return;
         const onDown = (e: MouseEvent) => {
-            if (
-                menuRef.current &&
-                !menuRef.current.contains(e.target as Node)
-            ) {
-                setMenuFor(null);
-            }
             if (
                 userMenuRef.current &&
                 !userMenuRef.current.contains(e.target as Node)
@@ -215,7 +205,20 @@ const Sidebar: React.FC = () => {
         };
         document.addEventListener("mousedown", onDown);
         return () => document.removeEventListener("mousedown", onDown);
-    }, [menuFor, userMenuOpen]);
+    }, [userMenuOpen]);
+
+    // Close chat menu on outside click — separate from the dropdown itself
+    useEffect(() => {
+        if (!menuFor) return;
+        const onDown = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // If the click is inside a menu (portal), ignore
+            if (target.closest("[data-ryta-chat-menu]")) return;
+            setMenuFor(null);
+        };
+        document.addEventListener("mousedown", onDown);
+        return () => document.removeEventListener("mousedown", onDown);
+    }, [menuFor]);
 
     useEffect(() => {
         if (renaming) {
@@ -255,11 +258,13 @@ const Sidebar: React.FC = () => {
         setPersona(c.persona);
         setThemeName(PERSONA_THEME[c.persona]);
         setView("chat");
+        navigate(`/chat/${c.id}`);
         closeOnMobile();
     };
 
     const handleNewChat = () => {
         startNewChat();
+        navigate("/chat");
         closeOnMobile();
     };
 
@@ -339,7 +344,6 @@ const Sidebar: React.FC = () => {
         setUserMenuOpen(false);
         const ok = await promptInstall();
         if (!ok) {
-            // Fallback message (mostly for dev / unsupported browsers)
             alert(
                 "App install is available from your browser menu (⋮ → Install app / Add to Home Screen)."
             );
@@ -355,7 +359,6 @@ const Sidebar: React.FC = () => {
         setRenameValue,
         menuFor,
         setMenuFor,
-        menuRef,
         renameRef,
         onOpen: openConversation,
         onBeginRename: beginRename,
@@ -366,165 +369,129 @@ const Sidebar: React.FC = () => {
         onDeleteRequest: setDeleting,
     };
 
-    const width = collapsed ? 0 : 260;
     const fullName = user?.fullName || user?.firstName || "You";
 
     return (
         <>
-            {/* Mobile backdrop */}
             <div
                 className="fixed inset-0 z-30 bg-black/40 lg:hidden"
                 onClick={toggleSidebar}
                 aria-hidden="true"
             />
 
-            <aside
-                style={{ width }}
-                className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)] transition-[width] duration-200 ease-out overflow-hidden"
-            >
+            <aside className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)] overflow-hidden">
                 {/* Top brand row */}
                 <div className="flex h-14 shrink-0 items-center justify-between px-3">
-                    {!collapsed ? (
-                        <>
-                            <div className="flex min-w-0 items-center gap-2.5">
-                                <img
-                                    src="/logo.png"
-                                    alt=""
-                                    className="h-7 w-7 rounded-lg object-contain"
-                                />
-                                <span className="truncate font-serif text-[17px] tracking-tight text-[var(--ryta-text)]">
-                                    Ryta
-                                </span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={toggleCollapsed}
-                                title="Collapse sidebar"
-                                aria-label="Collapse sidebar"
-                                className="rounded-lg p-1.5 text-[var(--ryta-text-muted)] transition-colors hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
-                            >
-                                <PanelLeftClose className="h-4 w-4" />
-                            </button>
-                        </>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={toggleCollapsed}
-                            title="Expand sidebar"
-                            aria-label="Expand sidebar"
-                            className="mx-auto rounded-lg p-1.5 text-[var(--ryta-text-muted)] transition-colors hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
-                        >
-                            <PanelLeftOpen className="h-4 w-4" />
-                        </button>
-                    )}
+                    <div className="flex min-w-0 items-center gap-2.5">
+                        <img
+                            src="/logo.png"
+                            alt=""
+                            className="h-7 w-7 rounded-lg object-contain"
+                        />
+                        <span className="truncate font-serif text-[17px] tracking-tight text-[var(--ryta-text)]">
+                            Ryta
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={toggleSidebar}
+                        title="Hide sidebar"
+                        aria-label="Hide sidebar"
+                        className="rounded-lg p-1.5 text-[var(--ryta-text-muted)] transition-colors hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
+                    >
+                        <PanelLeftClose className="h-4 w-4" />
+                    </button>
                 </div>
 
                 {/* New chat */}
-                <div className={`shrink-0 ${collapsed ? "px-2" : "px-2.5"} pb-2`}>
+                <div className="shrink-0 px-2.5 pb-2">
                     <button
                         type="button"
                         onClick={handleNewChat}
                         title="New chat"
-                        className={
-                            collapsed
-                                ? "flex h-10 w-10 mx-auto items-center justify-center rounded-xl bg-[var(--ryta-surface)] text-[var(--ryta-text-muted)] transition-colors hover:bg-[var(--ryta-surface-raised)] hover:text-[var(--ryta-text)]"
-                                : "flex h-10 w-full items-center gap-2.5 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)] px-3 text-[13.5px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface-raised)]"
-                        }
+                        className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)] px-3 text-[13.5px] font-medium text-[var(--ryta-text)] transition-colors hover:bg-[var(--ryta-surface-raised)]"
                     >
                         <Plus className="h-4 w-4 shrink-0" />
-                        {!collapsed && <span>New chat</span>}
+                        <span>New chat</span>
                     </button>
                 </div>
 
                 {/* Search */}
-                {!collapsed && (
-                    <div className="shrink-0 px-2.5 pb-1">
-                        <div className="relative">
-                            <Search
-                                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ryta-text-subtle)]"
-                                aria-hidden="true"
-                            />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) =>
-                                    setSearchQuery(e.target.value)
-                                }
-                                placeholder="Search chats"
-                                aria-label="Search chats"
-                                className="h-9 w-full rounded-xl border border-transparent bg-transparent pl-9 pr-8 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:bg-[var(--ryta-surface)]/50 focus:bg-[var(--ryta-surface)]/50"
-                            />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    onClick={() => setSearchQuery("")}
-                                    title="Clear search"
-                                    aria-label="Clear search"
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[var(--ryta-text-subtle)] hover:text-[var(--ryta-text)]"
-                                >
-                                    <X className="h-3 w-3" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Thread list */}
-                {!collapsed && (
-                    <div className="ryta-scroll flex-1 overflow-y-auto px-2 py-2">
-                        {loading && conversations.length === 0 ? (
-                            <p className="px-3 py-6 text-center text-[11.5px] text-[var(--ryta-text-subtle)]">
-                                Loading…
-                            </p>
-                        ) : total === 0 ? (
-                            <p className="px-3 py-6 text-center text-[11.5px] leading-relaxed text-[var(--ryta-text-subtle)]">
-                                {searchQuery
-                                    ? "Nothing matches that."
-                                    : "No conversations yet."}
-                            </p>
-                        ) : (
-                            <>
-                                {pinned.length > 0 && (
-                                    <ChatGroup
-                                        label="Pinned"
-                                        chats={pinned}
-                                        isPinned
-                                        {...rowProps}
-                                    />
-                                )}
-                                {GROUP_ORDER.map((label) =>
-                                    groups[label].length > 0 ? (
-                                        <ChatGroup
-                                            key={label}
-                                            label={GROUP_LABELS[label]}
-                                            chats={groups[label]}
-                                            {...rowProps}
-                                        />
-                                    ) : null
-                                )}
-                            </>
+                <div className="shrink-0 px-2.5 pb-1">
+                    <div className="relative">
+                        <Search
+                            className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ryta-text-subtle)]"
+                            aria-hidden="true"
+                        />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search chats"
+                            aria-label="Search chats"
+                            className="h-9 w-full rounded-xl border border-transparent bg-transparent pl-9 pr-8 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:bg-[var(--ryta-surface)]/50 focus:bg-[var(--ryta-surface)]/50"
+                        />
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchQuery("")}
+                                title="Clear search"
+                                aria-label="Clear search"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[var(--ryta-text-subtle)] hover:text-[var(--ryta-text)]"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
                         )}
                     </div>
-                )}
+                </div>
 
-                {collapsed && <div className="flex-1" />}
+                {/* Thread list */}
+                <div className="ryta-scroll flex-1 overflow-y-auto px-2 py-2">
+                    {loading && conversations.length === 0 ? (
+                        <p className="px-3 py-6 text-center text-[11.5px] text-[var(--ryta-text-subtle)]">
+                            Loading…
+                        </p>
+                    ) : total === 0 ? (
+                        <p className="px-3 py-6 text-center text-[11.5px] leading-relaxed text-[var(--ryta-text-subtle)]">
+                            {searchQuery
+                                ? "Nothing matches that."
+                                : "No conversations yet."}
+                        </p>
+                    ) : (
+                        <>
+                            {pinned.length > 0 && (
+                                <ChatGroup
+                                    label="Pinned"
+                                    chats={pinned}
+                                    isPinned
+                                    {...rowProps}
+                                />
+                            )}
+                            {GROUP_ORDER.map((label) =>
+                                groups[label].length > 0 ? (
+                                    <ChatGroup
+                                        key={label}
+                                        label={GROUP_LABELS[label]}
+                                        chats={groups[label]}
+                                        {...rowProps}
+                                    />
+                                ) : null
+                            )}
+                        </>
+                    )}
+                </div>
 
                 {/* Bottom user row */}
                 <div
                     ref={userMenuRef}
-                    className={`relative shrink-0 border-t border-[var(--ryta-border)] ${collapsed ? "p-2" : "p-2.5"}`}
+                    className="relative shrink-0 border-t border-[var(--ryta-border)] p-2.5"
                 >
                     <button
                         type="button"
                         onClick={() => setUserMenuOpen((v) => !v)}
-                        title={collapsed ? fullName : undefined}
                         aria-label="Account menu"
                         aria-expanded={userMenuOpen}
-                        className={
-                            collapsed
-                                ? "flex w-full items-center justify-center rounded-xl p-1 transition-colors hover:bg-[var(--ryta-surface)]"
-                                : "flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-[var(--ryta-surface)]"
-                        }
+                        className="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-[var(--ryta-surface)]"
                     >
                         <div className="shrink-0">
                             <UserButton
@@ -537,24 +504,14 @@ const Sidebar: React.FC = () => {
                                 }}
                             />
                         </div>
-                        {!collapsed && (
-                            <>
-                                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--ryta-text)]">
-                                    {fullName}
-                                </span>
-                                <MoreHorizontal className="h-4 w-4 shrink-0 text-[var(--ryta-text-subtle)]" />
-                            </>
-                        )}
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--ryta-text)]">
+                            {fullName}
+                        </span>
+                        <MoreHorizontal className="h-4 w-4 shrink-0 text-[var(--ryta-text-subtle)]" />
                     </button>
 
-                    {/* Dropdown */}
                     {userMenuOpen && (
-                        <div
-                            className={`absolute z-50 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)] ${collapsed
-                                    ? "bottom-full left-2 mb-1 w-52"
-                                    : "bottom-full left-2 right-2 mb-1"
-                                }`}
-                        >
+                        <div className="absolute bottom-full left-2 right-2 z-50 mb-1 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)]">
                             {canInstall && (
                                 <AccountMenuRow
                                     icon={<Download className="h-3.5 w-3.5" />}
@@ -670,7 +627,7 @@ const Sidebar: React.FC = () => {
 export default Sidebar;
 
 // ─────────────────────────────────────────────
-// Chat group
+// Chat group / row
 // ─────────────────────────────────────────────
 interface RowProps {
     activeChatId: string | null;
@@ -679,7 +636,6 @@ interface RowProps {
     setRenameValue: (v: string) => void;
     menuFor: string | null;
     setMenuFor: (id: string | null) => void;
-    menuRef: React.RefObject<HTMLDivElement | null>;
     renameRef: React.RefObject<HTMLInputElement | null>;
     onOpen: (c: ConversationSummary) => void;
     onBeginRename: (c: ConversationSummary) => void;
@@ -724,7 +680,6 @@ const ChatRow: React.FC<
     setRenameValue,
     menuFor,
     setMenuFor,
-    menuRef,
     renameRef,
     onOpen,
     onBeginRename,
@@ -737,6 +692,25 @@ const ChatRow: React.FC<
         const isActive = conversation.id === activeChatId;
         const isRenaming = conversation.id === renaming;
         const isMenuOpen = conversation.id === menuFor;
+
+        const btnRef = useRef<HTMLButtonElement>(null);
+        const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+            null
+        );
+
+        // When menu opens, compute fixed position from button rect
+        useEffect(() => {
+            if (!isMenuOpen || !btnRef.current) {
+                setMenuPos(null);
+                return;
+            }
+            const rect = btnRef.current.getBoundingClientRect();
+            // Place menu right-aligned below button
+            setMenuPos({
+                top: rect.bottom + 4,
+                left: rect.right - 176, // menu width ~176px
+            });
+        }, [isMenuOpen]);
 
         return (
             <li className="group relative">
@@ -782,6 +756,7 @@ const ChatRow: React.FC<
                             }`}
                     >
                         <button
+                            ref={btnRef}
                             type="button"
                             onClick={() =>
                                 setMenuFor(isMenuOpen ? null : conversation.id)
@@ -793,53 +768,55 @@ const ChatRow: React.FC<
                         >
                             <MoreHorizontal className="h-3.5 w-3.5" />
                         </button>
-
-                        {isMenuOpen && (
-                            <div
-                                ref={menuRef}
-                                className="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)]"
-                            >
-                                <AccountMenuRow
-                                    icon={<Pencil className="h-3.5 w-3.5" />}
-                                    label="Rename"
-                                    onClick={() => onBeginRename(conversation)}
-                                />
-                                <AccountMenuRow
-                                    icon={
-                                        conversation.is_pinned ? (
-                                            <PinOff className="h-3.5 w-3.5" />
-                                        ) : (
-                                            <Pin className="h-3.5 w-3.5" />
-                                        )
-                                    }
-                                    label={
-                                        conversation.is_pinned ? "Unpin" : "Pin"
-                                    }
-                                    onClick={() => onTogglePin(conversation)}
-                                />
-                                <AccountMenuRow
-                                    icon={<Archive className="h-3.5 w-3.5" />}
-                                    label="Archive"
-                                    onClick={() => onArchive(conversation)}
-                                />
-                                <div className="my-1 h-px bg-[var(--ryta-border)]" />
-                                <AccountMenuRow
-                                    icon={<Trash2 className="h-3.5 w-3.5" />}
-                                    label="Delete"
-                                    danger
-                                    onClick={() => onDeleteRequest(conversation)}
-                                />
-                            </div>
-                        )}
                     </div>
                 )}
+
+                {/* Portal dropdown — escapes overflow clipping */}
+                {isMenuOpen &&
+                    menuPos &&
+                    createPortal(
+                        <div
+                            data-ryta-chat-menu
+                            style={{ top: menuPos.top, left: menuPos.left }}
+                            className="fixed z-[100] w-44 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.35)]"
+                        >
+                            <AccountMenuRow
+                                icon={<Pencil className="h-3.5 w-3.5" />}
+                                label="Rename"
+                                onClick={() => onBeginRename(conversation)}
+                            />
+                            <AccountMenuRow
+                                icon={
+                                    conversation.is_pinned ? (
+                                        <PinOff className="h-3.5 w-3.5" />
+                                    ) : (
+                                        <Pin className="h-3.5 w-3.5" />
+                                    )
+                                }
+                                label={
+                                    conversation.is_pinned ? "Unpin" : "Pin"
+                                }
+                                onClick={() => onTogglePin(conversation)}
+                            />
+                            <AccountMenuRow
+                                icon={<Archive className="h-3.5 w-3.5" />}
+                                label="Archive"
+                                onClick={() => onArchive(conversation)}
+                            />
+                            <div className="my-1 h-px bg-[var(--ryta-border)]" />
+                            <AccountMenuRow
+                                icon={<Trash2 className="h-3.5 w-3.5" />}
+                                label="Delete"
+                                danger
+                                onClick={() => onDeleteRequest(conversation)}
+                            />
+                        </div>,
+                        document.body
+                    )}
             </li>
         );
     };
 
-// ─────────────────────────────────────────────
-// Shared menu row
-// ─────────────────────────────────────────────
 const AccountMenuRow: React.FC<{
     icon: React.ReactNode;
     label: string;
