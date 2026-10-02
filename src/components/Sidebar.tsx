@@ -7,6 +7,9 @@ import React, {
 } from "react";
 import {
     Archive,
+    Check,
+    ChevronDown,
+    LogOut,
     Moon,
     MoreHorizontal,
     PanelLeftClose,
@@ -21,7 +24,7 @@ import {
     Trash2,
     X,
 } from "lucide-react";
-import { UserButton, useUser } from "@clerk/clerk-react";
+import { UserButton, useUser, useClerk } from "@clerk/clerk-react";
 import {
     archiveConversation,
     deleteConversation,
@@ -43,6 +46,13 @@ const GROUP_ORDER: DateGroup[] = [
     "Previous 7 days",
     "Older",
 ];
+
+const GROUP_LABELS: Record<DateGroup, string> = {
+    Today: "Today",
+    Yesterday: "Yesterday",
+    "Previous 7 days": "Previous 7 days",
+    Older: "Older",
+};
 
 const groupFor = (iso?: string): DateGroup => {
     if (!iso) return "Older";
@@ -69,6 +79,7 @@ const groupFor = (iso?: string): DateGroup => {
 // ─────────────────────────────────────────────────────────────
 const Sidebar: React.FC = () => {
     const { user } = useUser();
+    const { signOut } = useClerk();
     const userId = user?.id;
     const { setThemeName, resolvedAppearance, toggleTheme, setAppearance } =
         useTheme();
@@ -99,9 +110,11 @@ const Sidebar: React.FC = () => {
         useState<ConversationSummary | null>(null);
     const [busy, setBusy] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
     const menuRef = useRef<HTMLDivElement>(null);
+    const userMenuRef = useRef<HTMLDivElement>(null);
     const renameRef = useRef<HTMLInputElement>(null);
 
     const isDark = resolvedAppearance === "dark";
@@ -123,8 +136,9 @@ const Sidebar: React.FC = () => {
         void load();
     }, [load]);
 
+    // Close menus on outside click
     useEffect(() => {
-        if (!menuFor) return;
+        if (!menuFor && !userMenuOpen) return;
         const onDown = (e: MouseEvent) => {
             if (
                 menuRef.current &&
@@ -132,10 +146,16 @@ const Sidebar: React.FC = () => {
             ) {
                 setMenuFor(null);
             }
+            if (
+                userMenuRef.current &&
+                !userMenuRef.current.contains(e.target as Node)
+            ) {
+                setUserMenuOpen(false);
+            }
         };
         document.addEventListener("mousedown", onDown);
         return () => document.removeEventListener("mousedown", onDown);
-    }, [menuFor]);
+    }, [menuFor, userMenuOpen]);
 
     useEffect(() => {
         if (renaming) {
@@ -328,15 +348,15 @@ const Sidebar: React.FC = () => {
                 </div>
 
                 {/* ── New chat ── */}
-                <div className="px-2 pb-1.5">
+                <div className="px-2.5 pb-2">
                     <button
                         type="button"
                         onClick={handleNewChat}
                         title="New chat"
-                        className={`flex h-10 items-center gap-2.5 rounded-xl text-[13.5px] font-medium transition-all duration-150
-                            ${collapsed
-                                ? "w-10 mx-auto justify-center bg-[var(--ryta-surface)]"
-                            : "w-full px-3 bg-[var(--ryta-surface)] text-[var(--ryta-text)] hover:bg-[var(--ryta-surface-raised)] border border-[var(--ryta-border)]"                            }`}
+                        className={`flex h-10 items-center gap-2.5 rounded-xl text-[13.5px] font-medium transition-all duration-150 ${collapsed
+                                ? "w-10 mx-auto justify-center bg-[var(--ryta-surface)] text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)]"
+                                : "w-full px-3 bg-[var(--ryta-surface)] text-[var(--ryta-text)] border border-[var(--ryta-border)] hover:bg-[var(--ryta-surface-raised)]"
+                            }`}
                     >
                         <Plus className="w-4 h-4 shrink-0" />
                         {!collapsed && <span>New chat</span>}
@@ -345,7 +365,7 @@ const Sidebar: React.FC = () => {
 
                 {/* ── Search ── */}
                 {!collapsed && (
-                    <div className="px-2.5 py-1.5">
+                    <div className="px-2.5 pb-1">
                         <div className="relative">
                             <Search
                                 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ryta-text-subtle)]"
@@ -359,7 +379,7 @@ const Sidebar: React.FC = () => {
                                 }
                                 placeholder="Search chats"
                                 aria-label="Search chats"
-                                className="h-9 w-full rounded-xl border border-transparent bg-[var(--ryta-surface)]/50 pl-9 pr-8 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:bg-[var(--ryta-surface)] focus:border-[var(--ryta-border-strong)] focus:bg-[var(--ryta-surface)]"
+                                className="h-9 w-full rounded-xl border border-transparent bg-transparent pl-9 pr-8 text-[12.5px] text-[var(--ryta-text)] outline-none transition-colors placeholder-[var(--ryta-text-subtle)] hover:bg-[var(--ryta-surface)]/50 focus:bg-[var(--ryta-surface)]/50"
                             />
                             {searchQuery && (
                                 <button
@@ -378,7 +398,7 @@ const Sidebar: React.FC = () => {
 
                 {/* ── Threads ── */}
                 {!collapsed && (
-                    <div className="ryta-scroll flex-1 overflow-y-auto px-2 py-1.5">
+                    <div className="ryta-scroll flex-1 overflow-y-auto px-2 py-2">
                         {loading && conversations.length === 0 ? (
                             <p className="px-3 py-6 text-center text-[11.5px] text-[var(--ryta-text-subtle)]">
                                 Loading…
@@ -403,7 +423,7 @@ const Sidebar: React.FC = () => {
                                     groups[label].length > 0 ? (
                                         <ChatGroup
                                             key={label}
-                                            label={label}
+                                            label={GROUP_LABELS[label]}
                                             chats={groups[label]}
                                             {...rowProps}
                                         />
@@ -416,63 +436,77 @@ const Sidebar: React.FC = () => {
 
                 {collapsed && <div className="flex-1" />}
 
-                {/* ── Bottom bar ── */}
-                <div className="shrink-0 border-t border-[var(--ryta-border)] p-2">
-                    <div
-                        className={`flex items-center ${collapsed ? "flex-col gap-1" : "gap-1"}`}
-                    >
-                        <button
-                            type="button"
-                            onClick={toggleTheme}
-                            title={
-                                isDark ? "Switch to light" : "Switch to dark"
-                            }
-                            aria-label={
-                                isDark ? "Switch to light" : "Switch to dark"
-                            }
-                            className={`p-2 rounded-lg text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
-                                ? "w-9 justify-center"
-                                : "flex-1 justify-center"
-                                }`}
-                        >
-                            {isDark ? (
-                                <Sun className="w-4 h-4" />
-                            ) : (
-                                <Moon className="w-4 h-4" />
-                            )}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setSettingsOpen(true)}
-                            title="Settings"
-                            aria-label="Settings"
-                            className={`p-2 rounded-lg text-[var(--ryta-text-muted)] hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)] transition-colors ${collapsed
-                                ? "w-9 justify-center"
-                                : "flex-1 justify-center"
-                                }`}
-                        >
-                            <SettingsIcon className="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    <div
-                        className={`mt-2 flex items-center ${collapsed ? "justify-center" : "gap-2.5 px-1.5 py-1"
+                {/* ── Bottom user row (DeepSeek-style) ── */}
+                <div
+                    ref={userMenuRef}
+                    className="relative shrink-0 border-t border-[var(--ryta-border)] p-2"
+                >
+                    <button
+                        type="button"
+                        onClick={() => setUserMenuOpen((v) => !v)}
+                        title={collapsed ? "Account" : undefined}
+                        aria-label="Account menu"
+                        aria-expanded={userMenuOpen}
+                        className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-[var(--ryta-surface)] ${collapsed ? "justify-center" : ""
                             }`}
                     >
-                        <UserButton />
+                        <div className="shrink-0">
+                            <UserButton
+                                appearance={{
+                                    elements: {
+                                        avatarBox: "w-7 h-7",
+                                        userButtonTrigger: "focus:shadow-none",
+                                    },
+                                }}
+                            />
+                        </div>
                         {!collapsed && (
-                            <div className="min-w-0 flex-1">
-                                <p className="truncate text-[12.5px] font-medium text-[var(--ryta-text)]">
-                                    {user?.fullName || "You"}
-                                </p>
-                                <p className="truncate text-[10.5px] text-[var(--ryta-text-subtle)]">
-                                    {user?.primaryEmailAddress?.emailAddress ??
-                                        ""}
-                                </p>
-                            </div>
+                            <>
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[12.5px] font-medium text-[var(--ryta-text)]">
+                                        {user?.fullName || "You"}
+                                    </p>
+                                    <p className="truncate text-[10.5px] text-[var(--ryta-text-subtle)]">
+                                        {user?.primaryEmailAddress
+                                            ?.emailAddress ?? ""}
+                                    </p>
+                                </div>
+                                <ChevronDown className="w-3.5 h-3.5 shrink-0 text-[var(--ryta-text-subtle)]" />
+                            </>
                         )}
-                    </div>
+                    </button>
+
+                    {/* User dropdown menu */}
+                    {userMenuOpen && (
+                        <div className="absolute bottom-full left-2 right-2 mb-1 z-50 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface-raised)] p-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.3)]">
+                            <UserMenuItem
+                                icon={isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                                label={isDark ? "Light mode" : "Dark mode"}
+                                onClick={() => {
+                                    toggleTheme();
+                                    setUserMenuOpen(false);
+                                }}
+                            />
+                            <UserMenuItem
+                                icon={<SettingsIcon className="w-3.5 h-3.5" />}
+                                label="Settings"
+                                onClick={() => {
+                                    setSettingsOpen(true);
+                                    setUserMenuOpen(false);
+                                }}
+                            />
+                            <div className="my-1 h-px bg-[var(--ryta-border)]" />
+                            <UserMenuItem
+                                icon={<LogOut className="w-3.5 h-3.5" />}
+                                label="Sign out"
+                                danger
+                                onClick={() => {
+                                    setUserMenuOpen(false);
+                                    void signOut();
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
             </aside>
 
@@ -565,7 +599,7 @@ const ChatGroup: React.FC<
     RowProps
 > = ({ label, chats, isPinned = false, ...row }) => (
     <div className="mb-3">
-        <h3 className="px-3 pb-1 pt-2 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--ryta-text-subtle)]">
+        <h3 className="px-3 pb-1.5 pt-2 text-[11px] font-medium text-[var(--ryta-text-subtle)]">
             {isPinned && (
                 <span
                     className="mr-1 text-[var(--ryta-primary)]"
@@ -628,16 +662,16 @@ const ChatRow: React.FC<
                             }
                         }}
                         aria-label="Rename conversation"
-                        className="w-full rounded-lg border border-[var(--ryta-primary)]/50 bg-[var(--ryta-surface-raised)] px-3 py-2 text-[12.5px] text-[var(--ryta-text)] outline-none shadow-[0_0_0_3px_var(--ryta-glow)]"
+                        className="w-full rounded-lg border border-[var(--ryta-primary)]/50 bg-[var(--ryta-surface-raised)] px-2.5 py-2 text-[12.5px] text-[var(--ryta-text)] outline-none shadow-[0_0_0_3px_var(--ryta-glow)]"
                     />
                 ) : (
                     <button
                         type="button"
                         onClick={() => onOpen(conversation)}
                         aria-current={isActive ? "true" : undefined}
-                        className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] transition-all duration-150 ${isActive
-                            ? "bg-[var(--ryta-primary)]/10 font-medium text-[var(--ryta-text)]"
-                            : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
+                        className={`flex w-full items-center rounded-lg px-2.5 py-2 pr-8 text-left text-[13px] transition-colors ${isActive
+                                ? "bg-[var(--ryta-surface)] font-medium text-[var(--ryta-text)]"
+                                : "text-[var(--ryta-text-muted)] hover:bg-[var(--ryta-surface)] hover:text-[var(--ryta-text)]"
                             }`}
                     >
                         <span className="truncate">{conversation.title}</span>
@@ -646,9 +680,9 @@ const ChatRow: React.FC<
 
                 {!isRenaming && (
                     <div
-                        className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-opacity ${isMenuOpen
-                            ? "opacity-100"
-                            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                        className={`absolute right-1 top-1/2 -translate-y-1/2 transition-opacity ${isMenuOpen
+                                ? "opacity-100"
+                                : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                             }`}
                     >
                         <button
@@ -659,7 +693,7 @@ const ChatRow: React.FC<
                             title="More"
                             aria-label={`Options for ${conversation.title}`}
                             aria-expanded={isMenuOpen}
-                            className="rounded-lg p-1 text-[var(--ryta-text-subtle)] transition-colors hover:bg-[var(--ryta-surface-raised)] hover:text-[var(--ryta-text)]"
+                            className="rounded-md p-1 text-[var(--ryta-text-subtle)] transition-colors hover:bg-[var(--ryta-surface-raised)] hover:text-[var(--ryta-text)]"
                         >
                             <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
@@ -672,9 +706,7 @@ const ChatRow: React.FC<
                                 <MenuItem
                                     icon={<Pencil className="w-3.5 h-3.5" />}
                                     label="Rename"
-                                    onClick={() =>
-                                        onBeginRename(conversation)
-                                    }
+                                    onClick={() => onBeginRename(conversation)}
                                 />
                                 <MenuItem
                                     icon={
@@ -699,9 +731,7 @@ const ChatRow: React.FC<
                                     icon={<Trash2 className="w-3.5 h-3.5" />}
                                     label="Delete"
                                     danger
-                                    onClick={() =>
-                                        onDeleteRequest(conversation)
-                                    }
+                                    onClick={() => onDeleteRequest(conversation)}
                                 />
                             </div>
                         )}
@@ -721,8 +751,27 @@ const MenuItem: React.FC<{
         type="button"
         onClick={onClick}
         className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] transition-colors ${danger
-            ? "text-[var(--ryta-primary)] hover:bg-[var(--ryta-surface)]"
-            : "text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
+                ? "text-[var(--ryta-primary)] hover:bg-[var(--ryta-surface)]"
+                : "text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
+            }`}
+    >
+        {icon}
+        {label}
+    </button>
+);
+
+const UserMenuItem: React.FC<{
+    icon: React.ReactNode;
+    label: string;
+    onClick: () => void;
+    danger?: boolean;
+}> = ({ icon, label, onClick, danger = false }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[12.5px] transition-colors ${danger
+                ? "text-[var(--ryta-primary)] hover:bg-[var(--ryta-surface)]"
+                : "text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
             }`}
     >
         {icon}
