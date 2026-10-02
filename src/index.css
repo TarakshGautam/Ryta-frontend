@@ -464,13 +464,11 @@ body {
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background text-foreground;
-  }
-
   html {
     @apply font-sans;
   }
+
+  /* body { @apply bg-background text-foreground; } — removed, using ryta-shell */
 }
 
 /* ─────────────────────────────────────────────
@@ -511,5 +509,55 @@ body {
     50% {
       opacity: 1;
     }
+  }
+}
+
+@keyframes ryta-cursor-blink {
+
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0.15;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   THEME TRANSITION — only colors, fast
+   ───────────────────────────────────────────── */
+html {
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+body {
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+/* Only transition the tokens that actually change */
+[data-theme] *,
+[data-appearance] * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 120ms;
+  transition-timing-function: ease;
+}
+
+/* Disable on inputs and buttons — they feel laggy otherwise */
+input,
+textarea,
+button {
+  transition-duration: 80ms;
+}
+
+/* Reduce motion users */
+@media (prefers-reduced-motion: reduce) {
+
+  html,
+  body,
+  [data-theme] *,
+  [data-appearance] * {
+    transition-duration: 0ms !important;
   }
 }

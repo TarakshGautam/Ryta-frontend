@@ -2,6 +2,7 @@
 import React, {
     createContext,
     useContext,
+    useLayoutEffect,
     useEffect,
     useState,
     useCallback,
@@ -53,6 +54,18 @@ function safeSetLocalStorage(key: string, value: string): void {
     }
 }
 
+// ─── Apply theme attributes SYNCHRONOUSLY to <html> ───
+function applyThemeToDOM(themeName: ThemeName, resolvedAppearance: "light" | "dark") {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", themeName);
+    root.setAttribute("data-appearance", resolvedAppearance);
+    if (resolvedAppearance === "dark") {
+        root.classList.add("dark");
+    } else {
+        root.classList.remove("dark");
+    }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [appearance, setAppearanceState] = useState<Appearance>(() => {
         const stored = safeGetLocalStorage(APPEARANCE_KEY) as Appearance | null;
@@ -69,26 +82,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         [appearance]
     );
 
+    // ⚡ useLayoutEffect: DOM update BEFORE paint — no flicker, no delay
+    useLayoutEffect(() => {
+        applyThemeToDOM(themeName, resolvedAppearance);
+    }, [themeName, resolvedAppearance]);
+
+    // Persist to localStorage (async, doesn't block)
     useEffect(() => {
-        const root = document.documentElement;
-        root.setAttribute("data-theme", themeName);
-        root.setAttribute("data-appearance", resolvedAppearance);
         safeSetLocalStorage(THEME_KEY, themeName);
         safeSetLocalStorage(APPEARANCE_KEY, appearance);
+    }, [appearance, themeName]);
 
-        if (resolvedAppearance === "dark") {
-            root.classList.add("dark");
-        } else {
-            root.classList.remove("dark");
-        }
-    }, [appearance, themeName, resolvedAppearance]);
-
+    // System preference listener
     useEffect(() => {
         if (appearance !== "system") return;
         if (typeof window === "undefined") return;
 
         const mq = window.matchMedia("(prefers-color-scheme: dark)");
         const handler = () => {
+            // Force re-render so resolvedAppearance recomputes
             setAppearanceState((prev) => prev);
         };
 
@@ -97,17 +109,36 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, [appearance]);
 
     const setAppearance = useCallback((mode: Appearance) => {
+        // Apply IMMEDIATELY before React re-renders
+        const resolved = resolveAppearance(mode);
+        applyThemeToDOM(
+            safeGetLocalStorage(THEME_KEY) as ThemeName || DEFAULT_THEME,
+            resolved
+        );
         setAppearanceState(mode);
     }, []);
 
     const setThemeName = useCallback((theme: ThemeName) => {
+        // Apply IMMEDIATELY
+        applyThemeToDOM(
+            theme,
+            resolveAppearance(
+                (safeGetLocalStorage(APPEARANCE_KEY) as Appearance) ||
+                DEFAULT_APPEARANCE
+            )
+        );
         setThemeNameState(theme);
     }, []);
 
     const toggleTheme = useCallback(() => {
         setAppearanceState((prev) => {
             const current = resolveAppearance(prev);
-            return current === "dark" ? "light" : "dark";
+            const next = current === "dark" ? "light" : "dark";
+            applyThemeToDOM(
+                (safeGetLocalStorage(THEME_KEY) as ThemeName) || DEFAULT_THEME,
+                next
+            );
+            return next;
         });
     }, []);
 
