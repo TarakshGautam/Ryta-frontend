@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { PanelLeft, SquarePen } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
-import ChatTopBar from "@/components/chat/ChatTopBar";
 import ChatArea from "@/components/chat/ChatArea";
 import { useChatStore } from "@/store/chatStore";
 import { useDocumentTitle } from "@/hooks/useDocumenttitle";
@@ -14,20 +14,15 @@ const ChatPage: React.FC = () => {
     const setActiveChatId = useChatStore((s) => s.setActiveChatId);
     const conversations = useChatStore((s) => s.conversations);
     const view = useChatStore((s) => s.view);
+    const sidebarOpen = useChatStore((s) => s.sidebarOpen);
+    const toggleSidebar = useChatStore((s) => s.toggleSidebar);
 
     const title =
         conversations.find((c) => c.id === activeChatId)?.title ?? null;
 
     useDocumentTitle(view === "diary" ? "Diary" : title || "Chat");
 
-    // ─────────────────────────────────────────────────────────
-    // Single source of truth:
-    // URL is truth on mount, store is truth after mount.
-    // When the URL changes (e.g. browser back/forward, or paste),
-    // sync the store to match.
-    // When the store changes (e.g. sidebar click), the caller
-    // (Sidebar) must navigate — this component does NOT navigate.
-    // ─────────────────────────────────────────────────────────
+    // URL ↔ store sync
     useEffect(() => {
         if (conversationId === undefined) return;
         if (conversationId === activeChatId) return;
@@ -35,17 +30,11 @@ const ChatPage: React.FC = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [conversationId]);
 
-    // ─────────────────────────────────────────────────────────
-    // New chat — clear store, go to /chat
-    // ─────────────────────────────────────────────────────────
     const handleNewChat = useCallback(() => {
         useChatStore.getState().startNewChat();
         navigate("/chat", { replace: true });
     }, [navigate]);
 
-    // ─────────────────────────────────────────────────────────
-    // Conversation just got created (first message sent)
-    // ─────────────────────────────────────────────────────────
     const handleConversationCreated = useCallback(
         (id: string) => {
             setActiveChatId(id);
@@ -54,9 +43,7 @@ const ChatPage: React.FC = () => {
         [setActiveChatId, navigate]
     );
 
-    // ─────────────────────────────────────────────────────────
-    // Keyboard: Cmd/Ctrl+K → new chat
-    // ─────────────────────────────────────────────────────────
+    // Cmd/Ctrl+K → new chat
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -73,7 +60,28 @@ const ChatPage: React.FC = () => {
             <Sidebar />
 
             <div className="relative flex h-full min-w-0 flex-1 flex-col">
-                <ChatTopBar title={title} />
+                {/* ─── Floating top-left controls (DeepSeek-style) ─── */}
+                <div className="pointer-events-none absolute left-3 top-3 z-20 flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={toggleSidebar}
+                        title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                        aria-label="Toggle sidebar"
+                        className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-bg)]/80 text-[var(--ryta-text-muted)] backdrop-blur-sm transition-colors hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
+                    >
+                        <PanelLeft className="h-4 w-4" />
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={handleNewChat}
+                        title="New chat"
+                        aria-label="New chat"
+                        className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-bg)]/80 text-[var(--ryta-text-muted)] backdrop-blur-sm transition-colors hover:text-[var(--ryta-text)] hover:bg-[var(--ryta-surface)]"
+                    >
+                        <SquarePen className="h-4 w-4" />
+                    </button>
+                </div>
 
                 <main className="min-h-0 flex-1 overflow-hidden">
                     {view === "chat" ? (

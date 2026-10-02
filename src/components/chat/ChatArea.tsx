@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { ArrowDown, MessageCircle, Compass, Sparkles, Heart } from "lucide-react";
 import ChatMessageBubble from "./ChatMessageBubble";
 import ChatComposer from "./ChatComposer";
-import { sendMessage } from "@/services/chatApi";
+import { sendMessage, generateConversationTitle } from "@/services/chatApi";
 import { getConversationMessages } from "@/services/conversationApi";
 import { useChatStore } from "@/store/chatStore";
 import { usePersonaSwitch } from "./usePersonaSwitch";
@@ -226,13 +226,31 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     setActiveChatId(result.conversationId);
                     upsertConversation({
                         id: result.conversationId,
-                        // Temporary title — backend will generate a
-                        // proper AI title shortly after.
-                        title: text.slice(0, 48),
+                        title: text.slice(0, 48), // temp title
                         persona,
                         updated_at: new Date().toISOString(),
                     });
                     onConversationCreated?.(result.conversationId);
+                    // ── Fire-and-forget: ask backend for AI title ──
+                    if (userId) {
+                        generateConversationTitle(
+                            userId,
+                            result.conversationId,
+                            text
+                        )
+                            .then((aiTitle) => {
+                                if (aiTitle) {
+                                    useChatStore
+                                        .getState()
+                                        .updateConversation(result.conversationId, {
+                                            title: aiTitle,
+                                        });
+                                }
+                            })
+                            .catch(() => {
+                                /* silent — temp title stays */
+                            });
+                    }
                 }
 
                 updateMessage(optimisticId, { id: result.userMessageId });

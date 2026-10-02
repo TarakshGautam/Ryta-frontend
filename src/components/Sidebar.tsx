@@ -336,8 +336,7 @@ const Sidebar: React.FC = () => {
                         className={`flex h-10 items-center gap-2.5 rounded-xl text-[13.5px] font-medium transition-all duration-150
                             ${collapsed
                                 ? "w-10 mx-auto justify-center bg-[var(--ryta-surface)]"
-                                : "w-full px-3 bg-[var(--ryta-primary)] text-[var(--ryta-primary-fg)] hover:bg-[var(--ryta-primary-hover)] shadow-[0_2px_12px_-4px_var(--ryta-glow)]"
-                            }`}
+                            : "w-full px-3 bg-[var(--ryta-surface)] text-[var(--ryta-text)] hover:bg-[var(--ryta-surface-raised)] border border-[var(--ryta-border)]"                            }`}
                     >
                         <Plus className="w-4 h-4 shrink-0" />
                         {!collapsed && <span>New chat</span>}
