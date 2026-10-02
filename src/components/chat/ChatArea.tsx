@@ -226,12 +226,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     setActiveChatId(result.conversationId);
                     upsertConversation({
                         id: result.conversationId,
-                        title: text.slice(0, 48), // temp title
+                        title: text.slice(0, 48),
                         persona,
                         updated_at: new Date().toISOString(),
                     });
                     onConversationCreated?.(result.conversationId);
-                    // ── Fire-and-forget: ask backend for AI title ──
                     if (userId) {
                         generateConversationTitle(
                             userId,
@@ -248,7 +247,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                                 }
                             })
                             .catch(() => {
-                                /* silent — temp title stays */
+                                /* silent */
                             });
                     }
                 }
@@ -336,9 +335,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
             >
                 <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 space-y-6">
                     {messagesLoading ? (
-                        <p className="py-16 text-center text-[13px] text-[var(--ryta-text-subtle)]">
-                            Opening…
-                        </p>
+                        <div className="py-16 flex justify-center">
+                            <Thinking />
+                        </div>
                     ) : messages.length === 0 ? (
                         <EmptyState
                             persona={persona}
@@ -355,7 +354,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                         ))
                     )}
 
-                    {isSending && <Thinking />}
+                    {isSending && (
+                        <div className="flex justify-start pl-1">
+                            <Thinking />
+                        </div>
+                    )}
 
                     {error && (
                         <p className="text-[12.5px] text-[var(--ryta-text-muted)] border-l-2 border-[var(--ryta-primary)] pl-3">
@@ -462,15 +465,23 @@ const EmptyState: React.FC<{
 };
 
 // ─────────────────────────────────────────────
-// Thinking indicator
+// Thinking indicator — bouncing gradient dots
 // ─────────────────────────────────────────────
 const Thinking: React.FC = () => (
-    <div className="flex items-center gap-1.5" aria-label="Thinking">
+    <div
+        className="flex items-center gap-1.5 px-1 py-1"
+        aria-label="Thinking"
+    >
         {[0, 150, 300].map((delay) => (
             <span
                 key={delay}
-                style={{ animationDelay: `${delay}ms` }}
-                className="w-1.5 h-1.5 rounded-full bg-[var(--ryta-primary)]/60 animate-pulse"
+                style={{
+                    animationDelay: `${delay}ms`,
+                    background:
+                        "linear-gradient(135deg, var(--ryta-primary), var(--ryta-primary-hover))",
+                    boxShadow: "0 0 10px -2px var(--ryta-primary)",
+                }}
+                className="h-2 w-2 rounded-full ryta-thinking-dot"
             />
         ))}
     </div>

@@ -1,7 +1,12 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { SignedIn, SignedOut, UserProfile } from "@clerk/clerk-react";
 import "./index.css";
 
 import Navbar from "./components/Navbar";
@@ -40,7 +45,7 @@ const getSubdomain = (hostname: string): string | null => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// PWA INSTALL HOOK — manual, reliable, no dependency
+// PWA INSTALL HOOK
 // ─────────────────────────────────────────────────────────────
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -54,12 +59,10 @@ function useInstallPrompt() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Detect iOS
     const ua = navigator.userAgent.toLowerCase();
     const ios = /iphone|ipad|ipod/.test(ua);
     setIsIOS(ios);
 
-    // Detect already installed (standalone mode)
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       Boolean(
@@ -67,13 +70,11 @@ function useInstallPrompt() {
       );
     setIsInstalled(standalone);
 
-    // Listen for beforeinstallprompt (Chrome, Edge, Android)
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
-    // Listen for appinstalled
     const installedHandler = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
@@ -96,7 +97,6 @@ function useInstallPrompt() {
     setDeferredPrompt(null);
   }, [deferredPrompt]);
 
-  // Installable: either real prompt available, or iOS (manual guide)
   const isInstallable = isIOS || Boolean(deferredPrompt);
 
   return { isInstallable, isInstalled, isIOS, install };
@@ -192,7 +192,7 @@ const MainLandingLayout: React.FC<{ hasBanner: boolean }> = ({
 };
 
 // ─────────────────────────────────────────────────────────────
-// INSTALL BANNER — bottom-center floating pill
+// INSTALL BANNER
 // ─────────────────────────────────────────────────────────────
 const InstallBanner: React.FC<{
   isIOS: boolean;
@@ -273,6 +273,44 @@ const InstallBanner: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────
+// USER PROFILE PAGE (Clerk)
+// ─────────────────────────────────────────────────────────────
+const UserProfilePage: React.FC = () => (
+  <div className="min-h-screen w-full bg-[var(--ryta-bg)] flex justify-center py-8 px-4">
+    <div className="w-full max-w-[880px]">
+      <UserProfile
+        routing="path"
+        path="/user-profile"
+        appearance={{
+          variables: {
+            colorPrimary: "var(--ryta-primary)",
+            colorBackground: "var(--ryta-bg)",
+            colorText: "var(--ryta-text)",
+            colorTextSecondary: "var(--ryta-text-muted)",
+            colorInputBackground: "var(--ryta-surface)",
+            colorInputText: "var(--ryta-text)",
+            borderRadius: "0.75rem",
+            fontFamily: "inherit",
+          },
+          elements: {
+            rootBox: "w-full",
+            card: "w-full shadow-none border border-[var(--ryta-border)] bg-[var(--ryta-bg)]",
+            navbar: "hidden",
+            navbarMobileMenuButton: "hidden",
+            headerTitle: "font-serif text-[var(--ryta-text)]",
+            headerSubtitle: "text-[var(--ryta-text-muted)]",
+            profileSectionTitleText: "text-[var(--ryta-text)]",
+            profileSectionContent: "text-[var(--ryta-text)]",
+            formButtonPrimary:
+              "bg-[var(--ryta-primary)] hover:bg-[var(--ryta-primary-hover)] text-[var(--ryta-primary-fg)]",
+          },
+        }}
+      />
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────────
 export const App: React.FC = () => {
@@ -286,7 +324,6 @@ export const App: React.FC = () => {
 
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
-  // Show banner after 5s, unless installed or recently dismissed
   useEffect(() => {
     if (isInstalled) return;
 
@@ -294,9 +331,7 @@ export const App: React.FC = () => {
     if (dismissed) {
       const dismissedAt = new Date(dismissed).getTime();
       const daysSince = (Date.now() - dismissedAt) / (1000 * 60 * 60 * 24);
-      // 7 days cooldown in production, 0 in dev (easy testing)
-      const cooldownDays =
-        import.meta.env.PROD ? 7 : 0;
+      const cooldownDays = import.meta.env.PROD ? 7 : 0;
       if (daysSince < cooldownDays) return;
     }
 
@@ -323,6 +358,7 @@ export const App: React.FC = () => {
 
       <Router>
         <Routes>
+          {/* ─── Subdomain routing ─── */}
           {subdomain === "chat" ? (
             <Route
               path="*"
@@ -341,11 +377,16 @@ export const App: React.FC = () => {
             <Route path="*" element={<GuestPage />} />
           ) : (
             <>
+              {/* ─── Landing ─── */}
               <Route
                 path="/"
                 element={<MainLandingLayout hasBanner={showInstallBanner} />}
               />
+
+              {/* ─── Guest ─── */}
               <Route path="/guest" element={<GuestPage />} />
+
+              {/* ─── Chat (signed in only) ─── */}
               <Route
                 path="/chat"
                 element={
@@ -372,6 +413,36 @@ export const App: React.FC = () => {
                   </>
                 }
               />
+
+              {/* ─── User Profile (Clerk account page) ─── */}
+              <Route
+                path="/user-profile"
+                element={
+                  <>
+                    <SignedIn>
+                      <UserProfilePage />
+                    </SignedIn>
+                    <SignedOut>
+                      <Navigate to="/" replace />
+                    </SignedOut>
+                  </>
+                }
+              />
+              <Route
+                path="/user-profile/*"
+                element={
+                  <>
+                    <SignedIn>
+                      <UserProfilePage />
+                    </SignedIn>
+                    <SignedOut>
+                      <Navigate to="/" replace />
+                    </SignedOut>
+                  </>
+                }
+              />
+
+              {/* ─── 404 ─── */}
               <Route path="/404" element={<NotFoundPage />} />
               <Route path="*" element={<Navigate to="/404" replace />} />
             </>

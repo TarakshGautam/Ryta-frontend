@@ -472,3 +472,44 @@ body {
     @apply font-sans;
   }
 }
+
+/* ─────────────────────────────────────────────
+   Thinking dots — bouncing gradient
+   ───────────────────────────────────────────── */
+@keyframes ryta-thinking-bounce {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+.ryta-thinking-dot {
+  animation: ryta-thinking-bounce 1.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ryta-thinking-dot {
+    animation: ryta-thinking-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes ryta-thinking-pulse {
+
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+
+    50% {
+      opacity: 1;
+    }
+  }
+}

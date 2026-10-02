@@ -5,6 +5,7 @@ import React, {
     useRef,
     useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Archive,
     Download,
@@ -21,6 +22,7 @@ import {
     Settings as SettingsIcon,
     Sun,
     Trash2,
+    User,
     X,
 } from "lucide-react";
 import { UserButton, useUser, useClerk } from "@clerk/clerk-react";
@@ -74,14 +76,74 @@ const groupFor = (iso?: string): DateGroup => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// PWA install hook — used inside this file
+// ─────────────────────────────────────────────────────────────
+interface BeforeInstallPromptEvent extends Event {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+function usePWAInstall() {
+    const [deferred, setDeferred] =
+        useState<BeforeInstallPromptEvent | null>(null);
+    const [installed, setInstalled] = useState(false);
+
+    useEffect(() => {
+        const standalone =
+            window.matchMedia("(display-mode: standalone)").matches ||
+            Boolean(
+                (navigator as unknown as { standalone?: boolean }).standalone
+            );
+        setInstalled(standalone);
+
+        const onPrompt = (e: Event) => {
+            e.preventDefault();
+            setDeferred(e as BeforeInstallPromptEvent);
+        };
+        const onInstalled = () => {
+            setInstalled(true);
+            setDeferred(null);
+        };
+
+        window.addEventListener("beforeinstallprompt", onPrompt);
+        window.addEventListener("appinstalled", onInstalled);
+        return () => {
+            window.removeEventListener("beforeinstallprompt", onPrompt);
+            window.removeEventListener("appinstalled", onInstalled);
+        };
+    }, []);
+
+    const promptInstall = useCallback(async () => {
+        if (!deferred) return false;
+        try {
+            await deferred.prompt();
+            const { outcome } = await deferred.userChoice;
+            setDeferred(null);
+            return outcome === "accepted";
+        } catch (e) {
+            console.warn("[PWA] install failed:", e);
+            return false;
+        }
+    }, [deferred]);
+
+    return {
+        canInstall: Boolean(deferred) && !installed,
+        installed,
+        promptInstall,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────
 // Sidebar
 // ─────────────────────────────────────────────────────────────
 const Sidebar: React.FC = () => {
     const { user } = useUser();
     const { signOut } = useClerk();
     const userId = user?.id;
+    const navigate = useNavigate();
     const { setThemeName, resolvedAppearance, toggleTheme, setAppearance } =
         useTheme();
+    const { canInstall, promptInstall } = usePWAInstall();
 
     const sidebarOpen = useChatStore((s) => s.sidebarOpen);
     const toggleSidebar = useChatStore((s) => s.toggleSidebar);
@@ -273,6 +335,17 @@ const Sidebar: React.FC = () => {
         }
     };
 
+    const handleInstallApp = async () => {
+        setUserMenuOpen(false);
+        const ok = await promptInstall();
+        if (!ok) {
+            // Fallback message (mostly for dev / unsupported browsers)
+            alert(
+                "App install is available from your browser menu (⋮ → Install app / Add to Home Screen)."
+            );
+        }
+    };
+
     if (!sidebarOpen) return null;
 
     const rowProps = {
@@ -293,7 +366,7 @@ const Sidebar: React.FC = () => {
         onDeleteRequest: setDeleting,
     };
 
-    const width = collapsed ? 60 : 260;
+    const width = collapsed ? 0 : 260;
     const fullName = user?.fullName || user?.firstName || "You";
 
     return (
@@ -309,7 +382,7 @@ const Sidebar: React.FC = () => {
                 style={{ width }}
                 className="fixed lg:relative inset-y-0 left-0 z-40 flex h-full shrink-0 flex-col border-r border-[var(--ryta-border)] bg-[var(--ryta-bg)] transition-[width] duration-200 ease-out overflow-hidden"
             >
-                {/* ── Top brand row ── */}
+                {/* Top brand row */}
                 <div className="flex h-14 shrink-0 items-center justify-between px-3">
                     {!collapsed ? (
                         <>
@@ -346,7 +419,7 @@ const Sidebar: React.FC = () => {
                     )}
                 </div>
 
-                {/* ── New chat ── */}
+                {/* New chat */}
                 <div className={`shrink-0 ${collapsed ? "px-2" : "px-2.5"} pb-2`}>
                     <button
                         type="button"
@@ -363,7 +436,7 @@ const Sidebar: React.FC = () => {
                     </button>
                 </div>
 
-                {/* ── Search ── */}
+                {/* Search */}
                 {!collapsed && (
                     <div className="shrink-0 px-2.5 pb-1">
                         <div className="relative">
@@ -396,7 +469,7 @@ const Sidebar: React.FC = () => {
                     </div>
                 )}
 
-                {/* ── Thread list ── */}
+                {/* Thread list */}
                 {!collapsed && (
                     <div className="ryta-scroll flex-1 overflow-y-auto px-2 py-2">
                         {loading && conversations.length === 0 ? (
@@ -436,11 +509,10 @@ const Sidebar: React.FC = () => {
 
                 {collapsed && <div className="flex-1" />}
 
-                {/* ── Bottom user row (minimal) ── */}
+                {/* Bottom user row */}
                 <div
                     ref={userMenuRef}
-                    className={`relative shrink-0 border-t border-[var(--ryta-border)] ${collapsed ? "p-2" : "p-2.5"
-                        }`}
+                    className={`relative shrink-0 border-t border-[var(--ryta-border)] ${collapsed ? "p-2" : "p-2.5"}`}
                 >
                     <button
                         type="button"
@@ -483,16 +555,19 @@ const Sidebar: React.FC = () => {
                                     : "bottom-full left-2 right-2 mb-1"
                                 }`}
                         >
+                            {canInstall && (
+                                <AccountMenuRow
+                                    icon={<Download className="h-3.5 w-3.5" />}
+                                    label="Install app"
+                                    onClick={handleInstallApp}
+                                />
+                            )}
                             <AccountMenuRow
-                                icon={<Download className="h-3.5 w-3.5" />}
-                                label="Install app"
+                                icon={<User className="h-3.5 w-3.5" />}
+                                label="Account"
                                 onClick={() => {
                                     setUserMenuOpen(false);
-                                    // PWA install prompt
-                                    const evt = new CustomEvent(
-                                        "ryta:install-pwa"
-                                    );
-                                    window.dispatchEvent(evt);
+                                    navigate("/user-profile");
                                 }}
                             />
                             <AccountMenuRow
@@ -763,8 +838,7 @@ const ChatRow: React.FC<
     };
 
 // ─────────────────────────────────────────────
-// Shared row (used in both chat menu + account menu)
-// Aligned icons + labels, consistent height
+// Shared menu row
 // ─────────────────────────────────────────────
 const AccountMenuRow: React.FC<{
     icon: React.ReactNode;
