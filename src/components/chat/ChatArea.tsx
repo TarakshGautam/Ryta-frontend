@@ -209,7 +209,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         if (isSending) scrollToBottom("smooth");
     }, [isSending, scrollToBottom]);
 
-    // ⚡ Deliver — uses queue-based send with polling
+    // ⚡ Deliver — streaming with real-time typing
     const deliver = useCallback(
         async (
             text: string,
@@ -233,7 +233,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                 timestamp: new Date(),
             });
 
-            // ── Add placeholder AI message (with thinking dots) ──
+            // ── Add placeholder AI message ──
             appendMessage({
                 id: streamingId,
                 sender: "ai",
@@ -244,11 +244,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                 timestamp: new Date(),
             });
 
-            // Scroll to show it
             setTimeout(() => scrollToBottom("smooth"), 50);
 
             try {
-                // ── Send via queue (returns after polling) ──
                 const result = await sendMessageWithQueue(
                     userId as string,
                     {
@@ -260,6 +258,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     },
                     (pollUrl) => {
                         console.log("[ChatArea] Queued → poll:", pollUrl);
+                    },
+                    (partialText) => {
+                        // ⚡ Real-time typing effect
+                        updateMessage(streamingId, { text: partialText });
+                        scrollToBottom("auto");
                     }
                 );
 
@@ -274,7 +277,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     });
                     onConversationCreated?.(result.conversationId);
 
-                    // ── AI title (async) ──
                     if (userId) {
                         generateConversationTitle(
                             userId,
@@ -297,7 +299,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     }
                 }
 
-                // ── Replace optimistic IDs + fill result ──
+                // ── Final update ──
                 updateMessage(optimisticId, { id: result.userMessageId });
                 updateMessage(streamingId, {
                     id: result.assistantMessageId,

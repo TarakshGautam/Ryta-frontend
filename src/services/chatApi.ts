@@ -36,19 +36,6 @@ interface ChatData {
 }
 
 // ─────────────────────────────────────────────
-// Queue response shape (from /api/chat-stream)
-// ─────────────────────────────────────────────
-interface QueuedResponse {
-    success: boolean;
-    queued: boolean;
-    conversationId: string;
-    userMessageId: string;
-    assistantMessageId: string;
-    pollUrl: string;
-    message: string;
-}
-
-// ─────────────────────────────────────────────
 // Poll result (from /api/chat-result/:convId/:msgId)
 // ─────────────────────────────────────────────
 interface PollResultData {
@@ -104,12 +91,13 @@ export async function sendMessage(
 }
 
 // ─────────────────────────────────────────────
-// POST /api/chat-stream — Queue-based with polling
+// POST /api/chat-stream — Streaming with real-time deltas
 // ─────────────────────────────────────────────
 export async function sendMessageWithQueue(
     userId: string,
     input: SendMessageInput,
-    onQueued?: (pollUrl: string) => void
+    onQueued?: (pollUrl: string) => void,
+    onDelta?: (partialText: string) => void
 ): Promise<SendMessageResult> {
     const res = await fetch(apiUrl("/api/chat-stream"), {
         method: "POST",
@@ -124,37 +112,9 @@ export async function sendMessageWithQueue(
         }),
     });
 
-    // Check content type
     const contentType = res.headers.get("content-type") || "";
 
-    // ⚡ Queued response (JSON)
-    if (contentType.includes("application/json")) {
-        const data = await res.json();
-        const queuedData = data.data || data;
-
-        if (queuedData.queued && queuedData.pollUrl) {
-            onQueued?.(queuedData.pollUrl);
-            const result = await pollChatResult(queuedData.pollUrl);
-
-            if (!result.success) {
-                throw new Error(result.error || "Failed to get response");
-            }
-
-            return {
-                conversationId: queuedData.conversationId,
-                message: result.reply!,
-                mood: result.mood ?? null,
-                isSearchUsed: false,
-                searchQuery: null,
-                userMessageId: queuedData.userMessageId,
-                assistantMessageId: queuedData.assistantMessageId,
-            };
-        }
-
-        throw new Error("Invalid queued response");
-    }
-
-    // ⚡ SSE streaming (shayari/tools)
+    // ⚡ SSE streaming (real-time deltas)
     if (contentType.includes("text/event-stream")) {
         const reader = res.body!.getReader();
         const decoder = new TextDecoder();
@@ -175,19 +135,28 @@ export async function sendMessageWithQueue(
 
             for (const line of lines) {
                 if (!line.startsWith("data: ")) continue;
-                const data = JSON.parse(line.slice(6));
 
-                if (data.type === "meta") {
-                    conversationId = data.conversationId;
-                    userMessageId = data.userMessageId;
-                    assistantMessageId = data.assistantMessageId;
+                try {
+                    const data = JSON.parse(line.slice(6));
+
+                    if (data.type === "meta") {
+                        conversationId = data.conversationId;
+                        userMessageId = data.userMessageId;
+                        assistantMessageId = data.assistantMessageId;
+                    }
+                    if (data.type === "delta") {
+                        fullReply += data.text;
+                        onDelta?.(fullReply); // ⚡ Real-time typing
+                    }
+                    if (data.type === "done") {
+                        mood = data.mood;
+                        fullReply = data.fullText;
+                        onDelta?.(fullReply); // ⚡ Final flush
+                    }
+                    if (data.type === "error") throw new Error(data.message);
+                } catch (e) {
+                    // Skip unparseable
                 }
-                if (data.type === "delta") fullReply += data.text;
-                if (data.type === "done") {
-                    mood = data.mood;
-                    fullReply = data.fullText;
-                }
-                if (data.type === "error") throw new Error(data.message);
             }
         }
 
@@ -202,6 +171,36 @@ export async function sendMessageWithQueue(
         };
     }
 
+    // ⚡ Queued JSON fallback
+    if (contentType.includes("application/json")) {
+        const data = await res.json();
+        const queuedData = data.data || data;
+
+        if (queuedData.queued && queuedData.pollUrl) {
+            onQueued?.(queuedData.pollUrl);
+            const result = await pollChatResult(queuedData.pollUrl, 20, 800);
+
+            if (!result.success) {
+                throw new Error(result.error || "Failed to get response");
+            }
+
+            const finalReply = result.reply!;
+            onDelta?.(finalReply); // ⚡ Final flush
+
+            return {
+                conversationId: queuedData.conversationId,
+                message: finalReply,
+                mood: result.mood ?? null,
+                isSearchUsed: false,
+                searchQuery: null,
+                userMessageId: queuedData.userMessageId,
+                assistantMessageId: queuedData.assistantMessageId,
+            };
+        }
+
+        throw new Error("Invalid queued response");
+    }
+
     throw new Error("Unknown response type");
 }
 
@@ -210,8 +209,8 @@ export async function sendMessageWithQueue(
 // ─────────────────────────────────────────────
 export async function pollChatResult(
     pollUrl: string,
-    maxAttempts = 40,
-    intervalMs = 1500
+    maxAttempts = 20,
+    intervalMs = 800
 ): Promise<PollResultData> {
     for (let i = 0; i < maxAttempts; i++) {
         await new Promise((r) => setTimeout(r, intervalMs));
@@ -220,13 +219,11 @@ export async function pollChatResult(
             const res = await fetch(apiUrl(pollUrl));
             const data = (await res.json()) as PollResponse;
 
-            // ⚡ Pending — continue
             if (data.pending || !data.data) {
                 console.log(`[Poll] ${i + 1}/${maxAttempts} — pending`);
                 continue;
             }
 
-            // ⚡ Completed
             if (data.data.success) {
                 return {
                     success: true,
@@ -235,7 +232,6 @@ export async function pollChatResult(
                 };
             }
 
-            // ⚡ Failed
             return {
                 success: false,
                 error: data.data.error || "Unknown error",
