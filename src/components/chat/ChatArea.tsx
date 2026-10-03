@@ -6,15 +6,29 @@ import React, {
 } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { motion } from "framer-motion";
-import { ArrowDown, MessageCircle, Compass, Sparkles, Heart } from "lucide-react";
+import {
+    ArrowDown,
+    MessageCircle,
+    Compass,
+    Sparkles,
+    Heart,
+} from "lucide-react";
 import ChatMessageBubble from "./ChatMessageBubble";
 import ChatComposer from "./ChatComposer";
-import { sendMessage, generateConversationTitle } from "@/services/chatApi";
+import {
+    sendMessageWithQueue,
+    generateConversationTitle,
+} from "@/services/chatApi";
 import { getConversationMessages } from "@/services/conversationApi";
 import { useChatStore } from "@/store/chatStore";
 import { usePersonaSwitch } from "./usePersonaSwitch";
 import { useTheme } from "@/context/ThemeContext";
-import { PERSONAS, PERSONA_THEME, type Attachment, type Message } from "@/types/chat";
+import {
+    PERSONAS,
+    PERSONA_THEME,
+    type Attachment,
+    type Message,
+} from "@/types/chat";
 
 interface ChatAreaProps {
     onConversationCreated?: (conversationId: string) => void;
@@ -129,7 +143,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
             setError(null);
 
             try {
-                const rows = await getConversationMessages(userId, activeChatId);
+                const rows = await getConversationMessages(
+                    userId,
+                    activeChatId
+                );
                 if (cancelled) return;
 
                 const loaded: Message[] = rows.map((r) => ({
@@ -192,6 +209,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         if (isSending) scrollToBottom("smooth");
     }, [isSending, scrollToBottom]);
 
+    // ⚡ Deliver — uses queue-based send with polling
     const deliver = useCallback(
         async (
             text: string,
@@ -204,7 +222,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
             setError(null);
 
             const optimisticId = `local-${crypto.randomUUID()}`;
+            const streamingId = `streaming-${crypto.randomUUID()}`;
 
+            // ── Add user message immediately ──
             appendMessage({
                 id: optimisticId,
                 sender: "user",
@@ -213,15 +233,37 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                 timestamp: new Date(),
             });
 
-            try {
-                const result = await sendMessage(userId as string, {
-                    message: text,
-                    conversationId: activeChatId,
-                    persona,
-                    webSearch: useSearch,
-                    attachments,
-                });
+            // ── Add placeholder AI message (with thinking dots) ──
+            appendMessage({
+                id: streamingId,
+                sender: "ai",
+                text: "",
+                persona,
+                mood: null,
+                isSearchUsed: false,
+                timestamp: new Date(),
+            });
 
+            // Scroll to show it
+            setTimeout(() => scrollToBottom("smooth"), 50);
+
+            try {
+                // ── Send via queue (returns after polling) ──
+                const result = await sendMessageWithQueue(
+                    userId as string,
+                    {
+                        message: text,
+                        conversationId: activeChatId,
+                        persona,
+                        webSearch: useSearch,
+                        attachments,
+                    },
+                    (pollUrl) => {
+                        console.log("[ChatArea] Queued → poll:", pollUrl);
+                    }
+                );
+
+                // ── New conversation — register ──
                 if (!activeChatId) {
                     setActiveChatId(result.conversationId);
                     upsertConversation({
@@ -231,6 +273,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                         updated_at: new Date().toISOString(),
                     });
                     onConversationCreated?.(result.conversationId);
+
+                    // ── AI title (async) ──
                     if (userId) {
                         generateConversationTitle(
                             userId,
@@ -241,9 +285,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                                 if (aiTitle) {
                                     useChatStore
                                         .getState()
-                                        .updateConversation(result.conversationId, {
-                                            title: aiTitle,
-                                        });
+                                        .updateConversation(
+                                            result.conversationId,
+                                            { title: aiTitle }
+                                        );
                                 }
                             })
                             .catch(() => {
@@ -252,20 +297,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     }
                 }
 
+                // ── Replace optimistic IDs + fill result ──
                 updateMessage(optimisticId, { id: result.userMessageId });
-
-                appendMessage({
+                updateMessage(streamingId, {
                     id: result.assistantMessageId,
-                    sender: "ai",
                     text: result.message,
-                    persona,
                     mood: result.mood,
                     isSearchUsed: result.isSearchUsed,
-                    timestamp: new Date(),
                 });
             } catch (e) {
                 console.error("Send failed:", e);
-                setMessages(messages.filter((m) => m.id !== optimisticId));
+                setMessages(
+                    useChatStore
+                        .getState()
+                        .messages.filter((m) => m.id !== streamingId)
+                );
                 setError(
                     e instanceof Error
                         ? e.message
@@ -288,6 +334,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
             setIsSending,
             setError,
             onConversationCreated,
+            scrollToBottom,
         ]
     );
 
@@ -350,14 +397,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                                 message={m}
                                 onRegenerate={handleRegenerate}
                                 onFeedback={handleFeedback}
+                                isStreaming={
+                                    isSending && m.id.startsWith("streaming-")
+                                }
                             />
                         ))
-                    )}
-
-                    {isSending && (
-                        <div className="flex justify-start pl-1">
-                            <Thinking />
-                        </div>
                     )}
 
                     {error && (
@@ -406,32 +450,55 @@ const EmptyState: React.FC<{
     const meta = PERSONAS[persona];
     const suggestions = SUGGESTIONS[persona] ?? [];
 
+    const copy = {
+        ryku: {
+            eyebrow: "Ryku is here",
+            headline: "Kya baat karni hai?",
+            subline: "Main sun rahi hoon — kuch bhi share karo.",
+        },
+        takshu: {
+            eyebrow: "Takshu is here",
+            headline: "Bol, kya scene hai?",
+            subline: "Main hu na. Kuch bhi bol.",
+        },
+    }[persona];
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="py-12 sm:py-16 flex flex-col items-center text-center"
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="flex flex-col items-center text-center pt-16 sm:pt-24 pb-10"
         >
-            <img
-                src={meta.avatar}
-                alt=""
-                className="w-12 h-12 rounded-2xl object-cover mb-4 shadow-[0_0_40px_-8px_var(--ryta-glow)]"
-            />
+            <div className="relative mb-6">
+                <div
+                    aria-hidden
+                    className="absolute inset-0 rounded-full blur-2xl opacity-60"
+                    style={{
+                        background:
+                            "radial-gradient(circle, var(--ryta-glow) 0%, transparent 70%)",
+                    }}
+                />
+                <img
+                    src={meta.avatar}
+                    alt=""
+                    className="relative w-16 h-16 rounded-full object-cover ring-1 ring-[var(--ryta-border)] shadow-[0_8px_32px_-8px_var(--ryta-glow)]"
+                />
+            </div>
 
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--ryta-text-subtle)]">
-                {meta.name}
+            <p className="text-[11px] font-medium tracking-[0.14em] uppercase text-[var(--ryta-text-subtle)] mb-3">
+                {copy.eyebrow}
             </p>
 
-            <h2 className="mt-3 font-serif text-[26px] sm:text-[32px] leading-snug text-[var(--ryta-text)] max-w-lg">
-                {meta.greeting}
-            </h2>
+            <h1 className="text-[28px] sm:text-[34px] leading-[1.15] font-semibold tracking-[-0.02em] text-[var(--ryta-text)] max-w-lg mb-3">
+                {copy.headline}
+            </h1>
 
-            <p className="mt-3 text-[13.5px] text-[var(--ryta-text-muted)] max-w-md leading-relaxed">
-                {meta.description}
+            <p className="text-[14.5px] leading-relaxed text-[var(--ryta-text-muted)] max-w-md mb-10">
+                {copy.subline}
             </p>
 
-            <div className="mt-8 w-full max-w-md space-y-2">
+            <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {suggestions.map((s, i) => (
                     <motion.button
                         key={s.text}
@@ -441,19 +508,19 @@ const EmptyState: React.FC<{
                         animate={{ opacity: 1, y: 0 }}
                         transition={{
                             duration: 0.25,
-                            delay: 0.1 + i * 0.05,
+                            delay: 0.15 + i * 0.05,
                             ease: "easeOut",
                         }}
-                        className="group flex w-full items-start gap-3 rounded-2xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)]/50 px-4 py-3 text-left transition-all duration-200 hover:border-[var(--ryta-primary)]/40 hover:bg-[var(--ryta-surface)] hover:shadow-[0_4px_20px_-8px_var(--ryta-glow)]"
+                        className="group flex items-start gap-3 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)]/40 px-4 py-3.5 text-left transition-all duration-150 hover:border-[var(--ryta-primary)]/40 hover:bg-[var(--ryta-surface)] hover:shadow-[0_4px_20px_-8px_var(--ryta-glow)]"
                     >
                         <span className="mt-0.5 shrink-0 text-[var(--ryta-text-subtle)] group-hover:text-[var(--ryta-primary)] transition-colors">
                             {s.icon}
                         </span>
                         <span className="flex-1 min-w-0">
-                            <span className="block text-[13.5px] font-medium text-[var(--ryta-text)]">
+                            <span className="block text-[13.5px] font-medium text-[var(--ryta-text)] leading-snug">
                                 {s.text}
                             </span>
-                            <span className="block mt-0.5 text-[12px] text-[var(--ryta-text-muted)]">
+                            <span className="block mt-0.5 text-[12px] text-[var(--ryta-text-muted)] leading-relaxed">
                                 {s.subtitle}
                             </span>
                         </span>
@@ -465,7 +532,7 @@ const EmptyState: React.FC<{
 };
 
 // ─────────────────────────────────────────────
-// Thinking indicator — bouncing gradient dots
+// Thinking indicator
 // ─────────────────────────────────────────────
 const Thinking: React.FC = () => (
     <div

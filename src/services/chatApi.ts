@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 // RyTa.AI — Chat API
-// POST /api/chat  ·  POST /api/tts  ·  POST /api/conversations/:id/generate-title
+// POST /api/chat · POST /api/chat-stream · POST /api/tts
+// POST /api/conversations/:id/generate-title
 // ─────────────────────────────────────────────
 
 import { apiSend, apiUrl, envelopeData, type Envelope } from "./apiClient";
@@ -34,11 +35,38 @@ interface ChatData {
     assistantMessageId: string;
 }
 
-/**
- * POST /api/chat
- * Passing no conversationId makes the Worker open a new
- * conversation and return its id.
- */
+// ─────────────────────────────────────────────
+// Queue response shape (from /api/chat-stream)
+// ─────────────────────────────────────────────
+interface QueuedResponse {
+    success: boolean;
+    queued: boolean;
+    conversationId: string;
+    userMessageId: string;
+    assistantMessageId: string;
+    pollUrl: string;
+    message: string;
+}
+
+// ─────────────────────────────────────────────
+// Poll result (from /api/chat-result/:convId/:msgId)
+// ─────────────────────────────────────────────
+interface PollResultData {
+    success: boolean;
+    reply?: string;
+    mood?: string;
+    error?: string;
+}
+
+interface PollResponse {
+    success: boolean;
+    data?: PollResultData;
+    pending?: boolean;
+}
+
+// ─────────────────────────────────────────────
+// POST /api/chat — direct (non-queue)
+// ─────────────────────────────────────────────
 export async function sendMessage(
     userId: string,
     input: SendMessageInput
@@ -76,20 +104,161 @@ export async function sendMessage(
 }
 
 // ─────────────────────────────────────────────
-// AI Title Generation
-// POST /api/conversations/:id/generate-title
+// POST /api/chat-stream — Queue-based with polling
 // ─────────────────────────────────────────────
+export async function sendMessageWithQueue(
+    userId: string,
+    input: SendMessageInput,
+    onQueued?: (pollUrl: string) => void
+): Promise<SendMessageResult> {
+    const res = await fetch(apiUrl("/api/chat-stream"), {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-user-id": userId,
+        },
+        body: JSON.stringify({
+            message: input.message,
+            conversation_id: input.conversationId,
+            persona: input.persona,
+        }),
+    });
 
+    // Check content type
+    const contentType = res.headers.get("content-type") || "";
+
+    // ⚡ Queued response (JSON)
+    if (contentType.includes("application/json")) {
+        const data = await res.json();
+        const queuedData = data.data || data;
+
+        if (queuedData.queued && queuedData.pollUrl) {
+            onQueued?.(queuedData.pollUrl);
+            const result = await pollChatResult(queuedData.pollUrl);
+
+            if (!result.success) {
+                throw new Error(result.error || "Failed to get response");
+            }
+
+            return {
+                conversationId: queuedData.conversationId,
+                message: result.reply!,
+                mood: result.mood ?? null,
+                isSearchUsed: false,
+                searchQuery: null,
+                userMessageId: queuedData.userMessageId,
+                assistantMessageId: queuedData.assistantMessageId,
+            };
+        }
+
+        throw new Error("Invalid queued response");
+    }
+
+    // ⚡ SSE streaming (shayari/tools)
+    if (contentType.includes("text/event-stream")) {
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullReply = "";
+        let mood: string | null = null;
+        let conversationId = "";
+        let assistantMessageId = "";
+        let userMessageId = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === "meta") {
+                    conversationId = data.conversationId;
+                    userMessageId = data.userMessageId;
+                    assistantMessageId = data.assistantMessageId;
+                }
+                if (data.type === "delta") fullReply += data.text;
+                if (data.type === "done") {
+                    mood = data.mood;
+                    fullReply = data.fullText;
+                }
+                if (data.type === "error") throw new Error(data.message);
+            }
+        }
+
+        return {
+            conversationId,
+            message: fullReply,
+            mood,
+            isSearchUsed: false,
+            searchQuery: null,
+            userMessageId,
+            assistantMessageId,
+        };
+    }
+
+    throw new Error("Unknown response type");
+}
+
+// ─────────────────────────────────────────────
+// Poll /api/chat-result/:convId/:msgId
+// ─────────────────────────────────────────────
+export async function pollChatResult(
+    pollUrl: string,
+    maxAttempts = 40,
+    intervalMs = 1500
+): Promise<PollResultData> {
+    for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((r) => setTimeout(r, intervalMs));
+
+        try {
+            const res = await fetch(apiUrl(pollUrl));
+            const data = (await res.json()) as PollResponse;
+
+            // ⚡ Pending — continue
+            if (data.pending || !data.data) {
+                console.log(`[Poll] ${i + 1}/${maxAttempts} — pending`);
+                continue;
+            }
+
+            // ⚡ Completed
+            if (data.data.success) {
+                return {
+                    success: true,
+                    reply: data.data.reply,
+                    mood: data.data.mood,
+                };
+            }
+
+            // ⚡ Failed
+            return {
+                success: false,
+                error: data.data.error || "Unknown error",
+            };
+        } catch (e) {
+            console.warn(`[Poll] ${i + 1} network error:`, e);
+        }
+    }
+
+    return {
+        success: false,
+        error: "Timeout — response took too long",
+    };
+}
+
+// ─────────────────────────────────────────────
+// AI Title Generation
+// ─────────────────────────────────────────────
 interface GenerateTitleData {
     id: string;
     title: string;
 }
 
-/**
- * Ask the backend to generate a short, warm AI title from the
- * first message. Fire-and-forget from the UI — never blocks the
- * send flow. Returns the title, or null on failure.
- */
 export async function generateConversationTitle(
     userId: string,
     conversationId: string,
@@ -110,10 +279,8 @@ export async function generateConversationTitle(
 }
 
 // ─────────────────────────────────────────────
-// TTS
-// POST /api/tts → raw audio/mpeg
+// TTS — POST /api/tts → raw audio/mpeg
 // ─────────────────────────────────────────────
-
 export async function fetchSpeechAudio(
     text: string,
     signal?: AbortSignal
