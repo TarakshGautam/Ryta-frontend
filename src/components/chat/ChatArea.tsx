@@ -477,6 +477,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
 // ─────────────────────────────────────────────
 // Empty state
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Empty State — warm, time-aware greeting
+// ─────────────────────────────────────────────
 const EmptyState: React.FC<{
     persona: "ryku" | "takshu";
     onPick: (text: string) => void;
@@ -484,72 +487,101 @@ const EmptyState: React.FC<{
     const meta = PERSONAS[persona];
     const suggestions = SUGGESTIONS[persona] ?? [];
 
+    // Time-aware greeting
+    const hour = new Date().getHours();
+    const timeGreeting =
+        hour < 5 ? "Late night hai" :
+            hour < 12 ? "Good morning" :
+                hour < 17 ? "Good afternoon" :
+                    hour < 21 ? "Good evening" :
+                        "Good night";
+
     const copy = {
         ryku: {
             eyebrow: "Ryku is here",
             headline: "Kya baat karni hai?",
             subline: "Main sun rahi hoon — kuch bhi share karo.",
+            greeting: `${timeGreeting}, jaan`,
         },
         takshu: {
             eyebrow: "Takshu is here",
             headline: "Bol, kya scene hai?",
             subline: "Main hu na. Kuch bhi bol.",
+            greeting: `${timeGreeting}, bhai`,
         },
     }[persona];
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
             className="flex flex-col items-center text-center pt-16 sm:pt-24 pb-10"
         >
-            <div className="relative mb-6">
+            {/* Avatar with float glow */}
+            <div className="relative mb-7">
                 <div
                     aria-hidden
-                    className="absolute inset-0 rounded-full blur-2xl opacity-60"
+                    className="absolute inset-0 rounded-full blur-3xl ryta-float-glow"
                     style={{
                         background:
-                            "radial-gradient(circle, var(--ryta-glow) 0%, transparent 70%)",
+                            "radial-gradient(circle, var(--ryta-primary) 0%, transparent 70%)",
+                        opacity: 0.35,
                     }}
                 />
-                <img
+                <motion.img
                     src={meta.avatar}
                     alt=""
-                    className="relative w-16 h-16 rounded-full object-cover ring-1 ring-[var(--ryta-border)] shadow-[0_8px_32px_-8px_var(--ryta-glow)]"
+                    initial={{ scale: 0.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="relative w-20 h-20 rounded-full object-cover ring-2 ring-[var(--ryta-border)]"
+                    style={{ boxShadow: "var(--ryta-shadow-lg)" }}
                 />
             </div>
 
-            <p className="text-[11px] font-medium tracking-[0.14em] uppercase text-[var(--ryta-text-subtle)] mb-3">
-                {copy.eyebrow}
+            {/* Time-aware greeting */}
+            <p className="text-[11px] font-medium tracking-[0.14em] uppercase text-[var(--ryta-primary)] mb-3">
+                {copy.greeting}
             </p>
 
-            <h1 className="text-[28px] sm:text-[34px] leading-[1.15] font-semibold tracking-[-0.02em] text-[var(--ryta-text)] max-w-lg mb-3">
+            <h1 className="font-serif text-[32px] sm:text-[40px] leading-[1.15] tracking-[-0.02em] text-[var(--ryta-text)] max-w-lg mb-3">
                 {copy.headline}
             </h1>
 
-            <p className="text-[14.5px] leading-relaxed text-[var(--ryta-text-muted)] max-w-md mb-10">
+            <p className="text-[15px] leading-relaxed text-[var(--ryta-text-muted)] max-w-md mb-10">
                 {copy.subline}
             </p>
 
-            <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Suggestion cards */}
+            <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {suggestions.map((s, i) => (
                     <motion.button
                         key={s.text}
                         type="button"
                         onClick={() => onPick(s.text)}
-                        initial={{ opacity: 0, y: 6 }}
+                        initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{
-                            duration: 0.25,
-                            delay: 0.15 + i * 0.05,
+                            duration: 0.3,
+                            delay: 0.2 + i * 0.06,
                             ease: "easeOut",
                         }}
-                        className="group flex items-start gap-3 rounded-xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)]/40 px-4 py-3.5 text-left transition-all duration-150 hover:border-[var(--ryta-primary)]/40 hover:bg-[var(--ryta-surface)] hover:shadow-[0_4px_20px_-8px_var(--ryta-glow)]"
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="group relative flex items-start gap-3 rounded-2xl border border-[var(--ryta-border)] bg-[var(--ryta-surface)]/60 px-4 py-4 text-left transition-all duration-200 hover:border-[var(--ryta-primary)]/40 hover:bg-[var(--ryta-surface)] overflow-hidden"
+                        style={{ boxShadow: "var(--ryta-shadow-sm)" }}
                     >
-                        <span className="mt-0.5 shrink-0 text-[var(--ryta-text-subtle)] group-hover:text-[var(--ryta-primary)] transition-colors">
+                        {/* Left accent bar on hover */}
+                        <span
+                            aria-hidden
+                            className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[var(--ryta-primary)] to-[var(--ryta-primary-hover)] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        />
+
+                        <span className="mt-0.5 shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ryta-primary)]/10 text-[var(--ryta-primary)] group-hover:bg-[var(--ryta-primary)]/15 transition-colors">
                             {s.icon}
                         </span>
+
                         <span className="flex-1 min-w-0">
                             <span className="block text-[13.5px] font-medium text-[var(--ryta-text)] leading-snug">
                                 {s.text}
@@ -561,6 +593,16 @@ const EmptyState: React.FC<{
                     </motion.button>
                 ))}
             </div>
+
+            {/* Bottom hint */}
+            <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.4 }}
+                className="mt-10 text-[11px] text-[var(--ryta-text-subtle)] font-hand"
+            >
+                Ye sirf tumhare liye hai, {persona === "ryku" ? "Ryka" : "Taraksh"} 💕
+            </motion.p>
         </motion.div>
     );
 };

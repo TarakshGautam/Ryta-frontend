@@ -25,7 +25,7 @@ body,
 }
 
 /* ─────────────────────────────────────────────
-   HEART PULSE — for loving/listening moments
+   HEART PULSE
    ───────────────────────────────────────────── */
 @keyframes ryta-heart-pulse {
   0% {
@@ -33,30 +33,23 @@ body,
     opacity: 0.85;
     filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
   }
-
   15% {
     transform: scale(1.12);
     opacity: 1;
     filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.5));
   }
-
   30% {
     transform: scale(1);
     opacity: 0.95;
-    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
   }
-
   45% {
     transform: scale(1.08);
     opacity: 1;
     filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.35));
   }
-
-  60%,
-  100% {
+  60%, 100% {
     transform: scale(1);
     opacity: 0.85;
-    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0));
   }
 }
 
@@ -64,6 +57,75 @@ body,
   animation: ryta-heart-pulse 3s ease-in-out infinite;
   transform-origin: center;
   will-change: transform, opacity, filter;
+}
+
+/* 🆕 Floating glow — for avatar hero */
+@keyframes ryta-float-glow {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(-6px) scale(1.05);
+    opacity: 0.75;
+  }
+}
+
+.ryta-float-glow {
+  animation: ryta-float-glow 4s ease-in-out infinite;
+}
+
+/* 🆕 Message arrival */
+@keyframes ryta-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ryta-message-in {
+  animation: ryta-message-in 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* 🆕 Mood capsule pop */
+@keyframes ryta-capsule-pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.ryta-capsule-pop {
+  animation: ryta-capsule-pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 🆕 Shimmer — for loading states */
+@keyframes ryta-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.ryta-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--ryta-primary) 8%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: ryta-shimmer 2s linear infinite;
 }
 
 /* ─────────────────────────────────────────────
@@ -82,8 +144,6 @@ body {
 /* ─────────────────────────────────────────────
    FONT UTILITIES
    ───────────────────────────────────────────── */
-
-/* Brand / display serif — used for "RyTa" and headings */
 .font-serif {
   font-family: 'Fraunces', Georgia, serif;
   font-optical-sizing: auto;
@@ -91,14 +151,12 @@ body {
   font-weight: 600;
 }
 
-/* Script / handwritten — used for love notes only */
 .font-script {
   font-family: 'Sacramento', 'Caveat', cursive;
   font-optical-sizing: auto;
   letter-spacing: 0.01em;
 }
 
-/* Handwritten — used for casual accents */
 .font-hand {
   font-family: 'Caveat', cursive;
 }
@@ -109,8 +167,6 @@ body {
 
 /* ─────────────────────────────────────────────
    THEME TOKENS
-   Single source of truth.
-   Two personas → two themes.
    ───────────────────────────────────────────── */
 
 /* SWEETHEART — Ryku, warm rose */
@@ -130,16 +186,19 @@ body {
   --ryta-user-bubble-bg: #FFF1F2;
   --ryta-user-bubble-fg: #4C0519;
   --ryta-glow: rgba(225, 29, 72, 0.12);
+  --ryta-shadow-sm: 0 1px 2px rgba(76, 5, 25, 0.04);
+  --ryta-shadow-md: 0 4px 16px -4px rgba(225, 29, 72, 0.12);
+  --ryta-shadow-lg: 0 12px 40px -12px rgba(225, 29, 72, 0.18);
   color-scheme: light;
 }
 
 [data-theme='sweetheart'][data-appearance='dark'] {
-  /* Neutral dark base — no more maroon overload */
+  /* Neutral dark base — balanced */
   --ryta-bg: #0E0A0C;
   --ryta-surface: #1A1215;
   --ryta-surface-raised: #241A1E;
 
-  /* Text hierarchy — clear contrast */
+  /* Text hierarchy */
   --ryta-text: #FAF5F7;
   --ryta-text-muted: #A8949C;
   --ryta-text-subtle: #6B5B62;
@@ -149,7 +208,7 @@ body {
   --ryta-primary-hover: #FB7185;
   --ryta-primary-fg: #FFFFFF;
 
-  /* Borders — subtle, don't overwhelm */
+  /* Borders — subtle */
   --ryta-border: #2A2024;
   --ryta-border-strong: #3D2F35;
 
@@ -157,8 +216,13 @@ body {
   --ryta-user-bubble-bg: #3D1A24;
   --ryta-user-bubble-fg: #FAF5F7;
 
-  /* Glow — subtle */
+  /* Glow */
   --ryta-glow: rgba(244, 63, 94, 0.18);
+
+  /* Shadows */
+  --ryta-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ryta-shadow-md: 0 4px 16px -4px rgba(0, 0, 0, 0.4);
+  --ryta-shadow-lg: 0 12px 40px -12px rgba(0, 0, 0, 0.5);
 
   color-scheme: dark;
 }
@@ -179,6 +243,9 @@ body {
   --ryta-user-bubble-bg: #FEF3C7;
   --ryta-user-bubble-fg: #1C1917;
   --ryta-glow: rgba(217, 119, 6, 0.10);
+  --ryta-shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04);
+  --ryta-shadow-md: 0 4px 16px -4px rgba(217, 119, 6, 0.12);
+  --ryta-shadow-lg: 0 12px 40px -12px rgba(217, 119, 6, 0.18);
   color-scheme: light;
 }
 
@@ -197,6 +264,9 @@ body {
   --ryta-user-bubble-bg: #2D2D24;
   --ryta-user-bubble-fg: #FEFCE8;
   --ryta-glow: rgba(245, 158, 11, 0.20);
+  --ryta-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ryta-shadow-md: 0 4px 16px -4px rgba(0, 0, 0, 0.4);
+  --ryta-shadow-lg: 0 12px 40px -12px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -311,13 +381,8 @@ body {
    ANIMATIONS
    ───────────────────────────────────────────── */
 @keyframes ryta-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes ryta-slide-up {
@@ -325,7 +390,6 @@ body {
     opacity: 0;
     transform: translateY(4px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -344,10 +408,7 @@ body {
    REDUCED MOTION
    ───────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
@@ -360,7 +421,6 @@ body {
   .ryta-panel-body {
     padding: 12px;
   }
-
   .ryta-panel-header {
     padding: 10px 14px;
   }
@@ -485,26 +545,19 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
-
   html {
     @apply font-sans;
   }
-
-  /* body { @apply bg-background text-foreground; } — removed, using ryta-shell */
 }
 
 /* ─────────────────────────────────────────────
-   Thinking dots — bouncing gradient
+   Thinking dots
    ───────────────────────────────────────────── */
 @keyframes ryta-thinking-bounce {
-
-  0%,
-  60%,
-  100% {
+  0%, 60%, 100% {
     transform: translateY(0);
     opacity: 0.45;
   }
-
   30% {
     transform: translateY(-6px);
     opacity: 1;
@@ -520,35 +573,19 @@ body {
   .ryta-thinking-dot {
     animation: ryta-thinking-pulse 1.2s ease-in-out infinite;
   }
-
   @keyframes ryta-thinking-pulse {
-
-    0%,
-    100% {
-      opacity: 0.45;
-    }
-
-    50% {
-      opacity: 1;
-    }
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
   }
 }
 
 @keyframes ryta-cursor-blink {
-
-  0%,
-  49% {
-    opacity: 1;
-  }
-
-  50%,
-  100% {
-    opacity: 0.15;
-  }
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
 }
 
 /* ─────────────────────────────────────────────
-   THEME TRANSITION — only colors, fast
+   THEME TRANSITION
    ───────────────────────────────────────────── */
 html {
   transition: background-color 120ms ease, color 120ms ease;
@@ -558,7 +595,6 @@ body {
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-/* Only transition the tokens that actually change */
 [data-theme] *,
 [data-appearance] * {
   transition-property: background-color, border-color, color, fill, stroke;
@@ -566,16 +602,13 @@ body {
   transition-timing-function: ease;
 }
 
-/* Disable on inputs and buttons — they feel laggy otherwise */
 input,
 textarea,
 button {
   transition-duration: 80ms;
 }
 
-/* Reduce motion users */
 @media (prefers-reduced-motion: reduce) {
-
   html,
   body,
   [data-theme] *,
