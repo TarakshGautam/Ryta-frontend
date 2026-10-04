@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useLayoutEffect, } from "react";
 import {
     Check,
     Copy,
@@ -117,43 +117,58 @@ const TypewriterText: React.FC<{
     isStreaming: boolean;
 }> = ({ text, isStreaming }) => {
     const [visible, setVisible] = useState(isStreaming ? "" : text);
+    const [targetText, setTargetText] = useState(text);
+    const rafRef = useRef<number | null>(null);
+    const lastTickRef = useRef<number>(0);
     const indexRef = useRef(0);
-    const prevTextRef = useRef("");
 
-    useEffect(() => {
+    // Update target whenever new text arrives
+    useLayoutEffect(() => {
+        setTargetText(text);
+    }, [text]);
+
+    // Animation loop
+    useLayoutEffect(() => {
         if (!isStreaming) {
-            setVisible(text);
+            // Instant complete on stream end
+            setVisible(targetText);
+            indexRef.current = targetText.length;
             return;
-        }
-
-        // If text grew, animate towards it
-        if (text.length > prevTextRef.current.length) {
-            prevTextRef.current = text;
         }
 
         let cancelled = false;
 
-        const tick = () => {
+        const loop = (now: number) => {
             if (cancelled) return;
 
-            if (indexRef.current < text.length) {
-                indexRef.current += 1;
-                setVisible(text.slice(0, indexRef.current));
+            const elapsed = now - lastTickRef.current;
 
-                // Speed: ~8ms per char — fast like ChatGPT
-                setTimeout(tick, 8);
-            } else if (isStreaming) {
-                // Wait for more text
-                setTimeout(tick, 30);
+            // ~12ms per char baseline
+            if (elapsed >= 12 && indexRef.current < targetText.length) {
+                const behind = targetText.length - indexRef.current;
+                // Catch up faster if far behind
+                const reveal = behind > 40 ? 3 : behind > 15 ? 2 : 1;
+
+                indexRef.current = Math.min(
+                    indexRef.current + reveal,
+                    targetText.length
+                );
+                setVisible(targetText.slice(0, indexRef.current));
+                lastTickRef.current = now;
             }
+
+            rafRef.current = requestAnimationFrame(loop);
         };
 
-        tick();
+        rafRef.current = requestAnimationFrame(loop);
 
         return () => {
             cancelled = true;
+            if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current);
+            }
         };
-    }, [text, isStreaming]);
+    }, [targetText, isStreaming]);
 
     return <MarkdownRenderer content={visible} />;
 };

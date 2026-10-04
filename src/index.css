@@ -134,20 +134,32 @@ body {
 }
 
 [data-theme='sweetheart'][data-appearance='dark'] {
-  --ryta-bg: #12070B;
-  --ryta-surface: #210D15;
-  --ryta-surface-raised: #2C1220;
-  --ryta-text: #FFF1F2;
-  --ryta-text-muted: #B4788A;
-  --ryta-text-subtle: #8B5A6B;
+  /* Neutral dark base — no more maroon overload */
+  --ryta-bg: #0E0A0C;
+  --ryta-surface: #1A1215;
+  --ryta-surface-raised: #241A1E;
+
+  /* Text hierarchy — clear contrast */
+  --ryta-text: #FAF5F7;
+  --ryta-text-muted: #A8949C;
+  --ryta-text-subtle: #6B5B62;
+
+  /* Primary — rose accent, used sparingly */
   --ryta-primary: #F43F5E;
   --ryta-primary-hover: #FB7185;
-  --ryta-primary-fg: #1A060E;
-  --ryta-border: #3D1827;
-  --ryta-border-strong: #5C2438;
-  --ryta-user-bubble-bg: #3D1827;
-  --ryta-user-bubble-fg: #FFF1F2;
-  --ryta-glow: rgba(244, 63, 94, 0.28);
+  --ryta-primary-fg: #FFFFFF;
+
+  /* Borders — subtle, don't overwhelm */
+  --ryta-border: #2A2024;
+  --ryta-border-strong: #3D2F35;
+
+  /* User bubble — soft rose tint */
+  --ryta-user-bubble-bg: #3D1A24;
+  --ryta-user-bubble-fg: #FAF5F7;
+
+  /* Glow — subtle */
+  --ryta-glow: rgba(244, 63, 94, 0.18);
+
   color-scheme: dark;
 }
 
