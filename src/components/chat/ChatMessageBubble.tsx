@@ -20,13 +20,14 @@ interface ChatMessageBubbleProps {
     isStreaming?: boolean;
 }
 
-// Badge tint per mood family
+// Badge tint per mood family — now with border for a real "capsule" feel
 const TONE_CLASS: Record<MoodTone, string> = {
-    rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
-    pink: "bg-pink-500/10 text-pink-700 dark:text-pink-300",
-    blue: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-    emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    zinc: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400",
+    rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20 dark:border-rose-400/25",
+    pink: "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20 dark:border-pink-400/25",
+    blue: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20 dark:border-blue-400/25",
+    emerald:
+        "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 dark:border-emerald-400/25",
+    zinc: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20 dark:border-zinc-400/25",
 };
 
 const formatTime = (date: Date): string => {
@@ -36,6 +37,27 @@ const formatTime = (date: Date): string => {
         minute: "2-digit",
     });
 };
+
+// ─────────────────────────────────────────────
+// Mood extraction — handles multiple AI output formats
+// ─────────────────────────────────────────────
+const MOOD_PATTERNS = [
+    /\[MOOD:\s*([A-Z_]+)\s*\]/i, // proper:  [MOOD:LOVING]
+    /MOOD:\s*([A-Z_]+)\s*\]/i,   // broken:  MOOD:LOVING]
+    /\[MOOD:\s*([A-Z_]+)/i,      // broken:  [MOOD:LOVING
+];
+
+function extractMood(text: string): { mood: string | null; clean: string } {
+    for (const pattern of MOOD_PATTERNS) {
+        const match = text.match(pattern);
+        if (match) {
+            const mood = match[1].toUpperCase();
+            const clean = text.replace(match[0], "").trim();
+            return { mood, clean };
+        }
+    }
+    return { mood: null, clean: text };
+}
 
 // ─────────────────────────────────────────────
 // Browser-native TTS — free, instant, no backend
@@ -52,10 +74,7 @@ function useBrowserTTS() {
         utterRef.current = null;
     };
 
-    const speak = (
-        text: string,
-        persona: "ryku" | "takshu"
-    ) => {
+    const speak = (text: string, persona: "ryku" | "takshu") => {
         if (!("speechSynthesis" in window)) return;
         stop();
 
@@ -107,9 +126,14 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     const [copied, setCopied] = useState(false);
     const { speaking, speak, stop } = useBrowserTTS();
 
+    // 🆕 Extract mood from raw text if not already structured
+    const { mood: extractedMood, clean: cleanText } = extractMood(message.text);
+    const displayMood = message.mood ?? extractedMood;
+    const displayText = cleanText;
+
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(message.text);
+            await navigator.clipboard.writeText(displayText);
             setCopied(true);
             window.setTimeout(() => setCopied(false), 1600);
         } catch {
@@ -122,10 +146,7 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
             stop();
             return;
         }
-        const plain = message.text
-            .replace(/\[MOOD:[A-Z_]+\]\s*/g, "")
-            .slice(0, 2000);
-        speak(plain, message.persona);
+        speak(displayText.slice(0, 2000), message.persona);
     };
 
     // ─────────────────────────────────────────
@@ -148,7 +169,7 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     // AI — clean, no bubble
     // ─────────────────────────────────────────
     const persona = PERSONAS[message.persona];
-    const tone = toneForMood(message.mood);
+    const tone = toneForMood(displayMood);
     const time = formatTime(message.timestamp);
 
     return (
@@ -159,17 +180,17 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                     {persona.name}
                 </span>
 
-                {message.mood && (
+                {displayMood && (
                     <span
-                        className={`px-1.5 py-px rounded-md text-[10px] font-medium uppercase tracking-wider ${TONE_CLASS[tone ?? "zinc"]
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${TONE_CLASS[tone ?? "zinc"]
                             }`}
                     >
-                        {message.mood}
+                        {displayMood}
                     </span>
                 )}
 
                 {message.isSearchUsed && (
-                    <span className="px-1.5 py-px rounded-md text-[10px] font-medium uppercase tracking-wider bg-[var(--ryta-primary)]/10 text-[var(--ryta-primary)]">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-[var(--ryta-primary)]/20 bg-[var(--ryta-primary)]/10 text-[var(--ryta-primary)] text-[10px] font-semibold uppercase tracking-wider">
                         searched
                     </span>
                 )}
@@ -183,7 +204,7 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
 
             {/* Body — markdown + streaming cursor */}
             <div className="relative">
-                <MarkdownRenderer content={message.text} />
+                <MarkdownRenderer content={displayText} />
                 {isStreaming && (
                     <span
                         aria-hidden="true"
