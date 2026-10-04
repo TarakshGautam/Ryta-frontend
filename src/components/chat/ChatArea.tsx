@@ -216,7 +216,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
         if (isSending) scrollToBottom("smooth");
     }, [isSending, scrollToBottom]);
 
-    // ⚡ Deliver — streaming with real-time typing
+    // ⚡ Deliver — streaming with real-time typing + SSE title
     const deliver = useCallback(
         async (
             text: string,
@@ -230,6 +230,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
 
             const optimisticId = `local-${crypto.randomUUID()}`;
             const streamingId = `streaming-${crypto.randomUUID()}`;
+
+            // 🆕 Track title received via SSE before result resolves
+            const pendingTitleRef = { current: null as string | null };
 
             // ── Add user message immediately ──
             appendMessage({
@@ -267,9 +270,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                         console.log("[ChatArea] Queued → poll:", pollUrl);
                     },
                     (partialText) => {
-                        // ⚡ Real-time typing effect
                         updateMessage(streamingId, { text: partialText });
                         scrollToBottom("auto");
+                    },
+                    // 🆕 Title event from SSE
+                    (title) => {
+                        console.log("[ChatArea] Title received:", title);
+                        pendingTitleRef.current = title;
+                        // If we already know convId, update immediately
+                        if (activeChatId) {
+                            useChatStore
+                                .getState()
+                                .updateConversation(activeChatId, { title });
+                        }
                     }
                 );
 
@@ -278,12 +291,25 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                     setActiveChatId(result.conversationId);
                     upsertConversation({
                         id: result.conversationId,
-                        title: text.slice(0, 48),
+                        title:
+                            pendingTitleRef.current ??
+                            makeFallbackTitle(text),
                         persona,
                         updated_at: new Date().toISOString(),
                     });
                     onConversationCreated?.(result.conversationId);
-                    if (userId) {
+
+                    // Apply pending title if SSE arrived before result
+                    if (pendingTitleRef.current) {
+                        useChatStore
+                            .getState()
+                            .updateConversation(result.conversationId, {
+                                title: pendingTitleRef.current,
+                            });
+                    }
+
+                    // 🆕 Legacy fallback — only if SSE title never arrived
+                    if (userId && !pendingTitleRef.current) {
                         generateConversationTitle(
                             userId,
                             result.conversationId,
@@ -297,21 +323,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                                             result.conversationId,
                                             { title: aiTitle }
                                         );
-                                } else {
-                                    // Fallback: AI ne kuch nahi diya toh pehle 6 words
-                                    useChatStore.getState().updateConversation(
-                                        result.conversationId,
-                                        { title: makeFallbackTitle(text) }
-                                    );
                                 }
                             })
-                            .catch((err) => {
-                                console.error("[Title] AI title failed:", err);
-                                // Guaranteed fallback — user ko "hi" hi nahi dikhega
-                                useChatStore.getState().updateConversation(
-                                    result.conversationId,
-                                    { title: makeFallbackTitle(text) }
-                                );
+                            .catch(() => {
+                                // Silent — fallback already set
                             });
                     }
                 }
