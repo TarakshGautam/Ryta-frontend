@@ -16,11 +16,9 @@ interface ChatMessageBubbleProps {
     message: Message;
     onRegenerate?: (messageId: string) => void;
     onFeedback?: (messageId: string, feedback: MessageFeedback) => void;
-    /** True while this AI message is actively streaming in */
     isStreaming?: boolean;
 }
 
-// Badge tint per mood family — now with border for a real "capsule" feel
 const TONE_CLASS: Record<MoodTone, string> = {
     rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20 dark:border-rose-400/25",
     pink: "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20 dark:border-pink-400/25",
@@ -38,13 +36,12 @@ const formatTime = (date: Date): string => {
     });
 };
 
-// ─────────────────────────────────────────────
 // Mood extraction — handles multiple AI output formats
-// ─────────────────────────────────────────────
 const MOOD_PATTERNS = [
-    /\[MOOD:\s*([A-Z_]+)\s*\]/i, // proper:  [MOOD:LOVING]
-    /MOOD:\s*([A-Z_]+)\s*\]/i,   // broken:  MOOD:LOVING]
-    /\[MOOD:\s*([A-Z_]+)/i,      // broken:  [MOOD:LOVING
+    /\[MOOD:\s*([A-Z_]+)\s*\]/i,
+    /\bOD:\s*([A-Z_]+)\s*\]/i,
+    /MOOD:\s*([A-Z_]+)\s*\]/i,
+    /\[MOOD:\s*([A-Z_]+)/i,
 ];
 
 function extractMood(text: string): { mood: string | null; clean: string } {
@@ -60,7 +57,7 @@ function extractMood(text: string): { mood: string | null; clean: string } {
 }
 
 // ─────────────────────────────────────────────
-// Browser-native TTS — free, instant, no backend
+// Browser-native TTS
 // ─────────────────────────────────────────────
 function useBrowserTTS() {
     const [speaking, setSpeaking] = useState(false);
@@ -79,18 +76,14 @@ function useBrowserTTS() {
         stop();
 
         const utter = new SpeechSynthesisUtterance(text);
-        // Hinglish friendly — Indian English
         utter.lang = "en-IN";
         utter.rate = 0.95;
         utter.pitch = persona === "ryku" ? 1.15 : 0.9;
 
-        // Pick a matching voice when possible
         const voices = window.speechSynthesis.getVoices();
         const preferred =
             voices.find(
-                (v) =>
-                    v.lang.startsWith("en-IN") ||
-                    v.lang.startsWith("hi-IN")
+                (v) => v.lang.startsWith("en-IN") || v.lang.startsWith("hi-IN")
             ) ||
             voices.find((v) => v.lang.startsWith("en")) ||
             voices[0];
@@ -105,7 +98,6 @@ function useBrowserTTS() {
         window.speechSynthesis.speak(utter);
     };
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if ("speechSynthesis" in window) {
@@ -117,6 +109,55 @@ function useBrowserTTS() {
     return { speaking, speak, stop };
 }
 
+// ─────────────────────────────────────────────
+// Simple typewriter for streaming
+// ─────────────────────────────────────────────
+const TypewriterText: React.FC<{
+    text: string;
+    isStreaming: boolean;
+}> = ({ text, isStreaming }) => {
+    const [visible, setVisible] = useState(isStreaming ? "" : text);
+    const indexRef = useRef(0);
+    const prevTextRef = useRef("");
+
+    useEffect(() => {
+        if (!isStreaming) {
+            setVisible(text);
+            return;
+        }
+
+        // If text grew, animate towards it
+        if (text.length > prevTextRef.current.length) {
+            prevTextRef.current = text;
+        }
+
+        let cancelled = false;
+
+        const tick = () => {
+            if (cancelled) return;
+
+            if (indexRef.current < text.length) {
+                indexRef.current += 1;
+                setVisible(text.slice(0, indexRef.current));
+
+                // Speed: ~8ms per char — fast like ChatGPT
+                setTimeout(tick, 8);
+            } else if (isStreaming) {
+                // Wait for more text
+                setTimeout(tick, 30);
+            }
+        };
+
+        tick();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [text, isStreaming]);
+
+    return <MarkdownRenderer content={visible} />;
+};
+
 const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     message,
     onRegenerate,
@@ -126,7 +167,6 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     const [copied, setCopied] = useState(false);
     const { speaking, speak, stop } = useBrowserTTS();
 
-    // 🆕 Extract mood from raw text if not already structured
     const { mood: extractedMood, clean: cleanText } = extractMood(message.text);
     const displayMood = message.mood ?? extractedMood;
     const displayText = cleanText;
@@ -149,9 +189,7 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
         speak(displayText.slice(0, 2000), message.persona);
     };
 
-    // ─────────────────────────────────────────
-    // USER — right aligned
-    // ─────────────────────────────────────────
+    // USER
     if (message.sender === "user") {
         return (
             <div className="flex justify-end">
@@ -165,16 +203,13 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
         );
     }
 
-    // ─────────────────────────────────────────
-    // AI — clean, no bubble
-    // ─────────────────────────────────────────
+    // AI
     const persona = PERSONAS[message.persona];
     const tone = toneForMood(displayMood);
     const time = formatTime(message.timestamp);
 
     return (
         <div className="group w-full">
-            {/* Header: name + mood + search + time */}
             <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
                 <span className="font-serif text-[15.5px] font-semibold text-[var(--ryta-text)]">
                     {persona.name}
@@ -202,18 +237,10 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                 )}
             </div>
 
-            {/* Body — markdown + streaming cursor */}
             <div className="relative">
-                <MarkdownRenderer content={displayText} />
-                {isStreaming && (
-                    <span
-                        aria-hidden="true"
-                        className="inline-block w-[2px] h-[1em] align-middle ml-0.5 bg-[var(--ryta-primary)] animate-[ryta-cursor-blink_1s_ease-in-out_infinite]"
-                    />
-                )}
+                <TypewriterText text={displayText} isStreaming={isStreaming} />
             </div>
 
-            {/* Actions — hover on desktop, always on mobile */}
             {!isStreaming && (
                 <div className="flex items-center gap-0.5 mt-2 opacity-100 transition-opacity duration-150 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                     <ActionBtn
@@ -254,9 +281,7 @@ const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                         onClick={() =>
                             onFeedback?.(
                                 message.id,
-                                message.feedback === "disliked"
-                                    ? null
-                                    : "disliked"
+                                message.feedback === "disliked" ? null : "disliked"
                             )
                         }
                         title="This missed the mark"

@@ -92,12 +92,14 @@ export async function sendMessage(
 
 // ─────────────────────────────────────────────
 // POST /api/chat-stream — Streaming with real-time deltas
+// 🆕 Also listens for "title" events
 // ─────────────────────────────────────────────
 export async function sendMessageWithQueue(
     userId: string,
     input: SendMessageInput,
     onQueued?: (pollUrl: string) => void,
-    onDelta?: (partialText: string) => void
+    onDelta?: (partialText: string) => void,
+    onTitle?: (title: string) => void
 ): Promise<SendMessageResult> {
     const res = await fetch(apiUrl("/api/chat-stream"), {
         method: "POST",
@@ -146,12 +148,16 @@ export async function sendMessageWithQueue(
                     }
                     if (data.type === "delta") {
                         fullReply += data.text;
-                        onDelta?.(fullReply); // ⚡ Real-time typing
+                        onDelta?.(fullReply);
+                    }
+                    // 🆕 Title event — AI-generated, arrives mid-stream
+                    if (data.type === "title") {
+                        onTitle?.(data.title);
                     }
                     if (data.type === "done") {
                         mood = data.mood;
                         fullReply = data.fullText;
-                        onDelta?.(fullReply); // ⚡ Final flush
+                        onDelta?.(fullReply);
                     }
                     if (data.type === "error") throw new Error(data.message);
                 } catch (e) {
@@ -185,7 +191,7 @@ export async function sendMessageWithQueue(
             }
 
             const finalReply = result.reply!;
-            onDelta?.(finalReply); // ⚡ Final flush
+            onDelta?.(finalReply);
 
             return {
                 conversationId: queuedData.conversationId,
@@ -248,7 +254,7 @@ export async function pollChatResult(
 }
 
 // ─────────────────────────────────────────────
-// AI Title Generation
+// AI Title Generation (legacy endpoint — keep for fallback)
 // ─────────────────────────────────────────────
 interface GenerateTitleData {
     id: string;
