@@ -403,8 +403,8 @@ const Sidebar: React.FC = () => {
                             alt=""
                             className="h-7 w-7 rounded-lg object-contain"
                         />
-                        <span className="truncate font-serif text-[17px] tracking-tight text-[var(--ryta-text)]">
-                            Ryta
+                        <span className="truncate font-serif text-[17px] text-[var(--ryta-text)]">
+                            RyTa
                         </span>
                     </div>
                     <button

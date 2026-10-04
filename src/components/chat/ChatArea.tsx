@@ -40,6 +40,13 @@ interface SuggestionItem {
     icon: React.ReactNode;
 }
 
+function makeFallbackTitle(text: string): string {
+    const clean = text.trim().replace(/\s+/g, " ");
+    if (!clean) return "New chat";
+    const words = clean.split(" ").slice(0, 6).join(" ");
+    return words.length > 42 ? words.slice(0, 42).trimEnd() + "…" : words;
+}
+
 const SUGGESTIONS: Record<string, SuggestionItem[]> = {
     ryku: [
         {
@@ -276,7 +283,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                         updated_at: new Date().toISOString(),
                     });
                     onConversationCreated?.(result.conversationId);
-
                     if (userId) {
                         generateConversationTitle(
                             userId,
@@ -291,10 +297,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({ onConversationCreated }) => {
                                             result.conversationId,
                                             { title: aiTitle }
                                         );
+                                } else {
+                                    // Fallback: AI ne kuch nahi diya toh pehle 6 words
+                                    useChatStore.getState().updateConversation(
+                                        result.conversationId,
+                                        { title: makeFallbackTitle(text) }
+                                    );
                                 }
                             })
-                            .catch(() => {
-                                /* silent */
+                            .catch((err) => {
+                                console.error("[Title] AI title failed:", err);
+                                // Guaranteed fallback — user ko "hi" hi nahi dikhega
+                                useChatStore.getState().updateConversation(
+                                    result.conversationId,
+                                    { title: makeFallbackTitle(text) }
+                                );
                             });
                     }
                 }

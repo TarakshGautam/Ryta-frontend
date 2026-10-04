@@ -82,13 +82,23 @@ body {
 /* ─────────────────────────────────────────────
    FONT UTILITIES
    ───────────────────────────────────────────── */
-.font-serif,
+
+/* Brand / display serif — used for "RyTa" and headings */
+.font-serif {
+  font-family: 'Fraunces', Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+/* Script / handwritten — used for love notes only */
 .font-script {
   font-family: 'Sacramento', 'Caveat', cursive;
   font-optical-sizing: auto;
   letter-spacing: 0.01em;
 }
 
+/* Handwritten — used for casual accents */
 .font-hand {
   font-family: 'Caveat', cursive;
 }
