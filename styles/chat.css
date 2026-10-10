@@ -1,0 +1,189 @@
+/* ============================================================
+   RyTa AI — Chat Page Styles
+   Scoped: only used in /chat
+   ============================================================ */
+
+/* ─────────────────────────────────────────────
+   ROOT LAYOUT
+   ───────────────────────────────────────────── */
+.chat-root {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100svh;
+    max-height: 100dvh;
+    display: flex;
+    overflow: hidden;
+    background: var(--ryta-bg);
+    color: var(--ryta-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.chat-main {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────
+   HEADER — floating, slim
+   ───────────────────────────────────────────── */
+.chat-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    pointer-events: none;
+}
+
+.chat-header-left,
+.chat-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+}
+
+.chat-header-center {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+
+.chat-header-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ryta-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Floating capsule */
+.chat-capsule {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 16px;
+    border: 1px solid var(--ryta-border);
+    background: color-mix(in srgb, var(--ryta-bg) 85%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 2px 12px -4px rgba(0, 0, 0, 0.08);
+}
+
+.chat-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    object-fit: contain;
+    transition: transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.chat-logo:hover {
+    transform: scale(1.08) rotate(-4deg);
+}
+
+/* Icon button */
+.chat-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--ryta-icon-color);
+    cursor: pointer;
+    transition: all 180ms cubic-bezier(0.2, 0.9, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.chat-icon-btn:hover {
+    background: var(--ryta-surface-raised);
+    color: var(--ryta-text);
+    transform: translateY(-1px);
+}
+
+.chat-icon-btn:active {
+    transform: scale(0.92);
+    transition-duration: 80ms;
+}
+
+/* ─────────────────────────────────────────────
+   MAIN CONTENT
+   ───────────────────────────────────────────── */
+.chat-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 56px;
+}
+
+/* ─────────────────────────────────────────────
+   REDUCED MOTION
+   ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+
+    .chat-logo,
+    .chat-icon-btn {
+        transition: none !important;
+    }
+}
+
+/* ─────────────────────────────────────────────
+   MOBILE
+   ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .chat-header {
+        padding: 0 8px;
+        gap: 6px;
+    }
+
+    .chat-icon-btn {
+        width: 34px;
+        height: 34px;
+    }
+}
+
+/* ─────────────────────────────────────────────
+   TABLET
+   ───────────────────────────────────────────── */
+@media (min-width: 641px) and (max-width: 1023px) {
+    .chat-header {
+        padding: 0 16px;
+    }
+}
+
+/* ─────────────────────────────────────────────
+   DESKTOP
+   ───────────────────────────────────────────── */
+@media (min-width: 1024px) {
+    .chat-header {
+        padding: 0 20px;
+    }
+
+    .chat-icon-btn {
+        width: 34px;
+        height: 34px;
+    }
+}
